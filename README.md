@@ -1,15 +1,15 @@
 ### Overview 
 
-**`mpify`** is an simple API to run function (the "target function") on a group of *ranked* processes via a single function call.
+**`mpify`** is an simple API to run function (the "target function") on a group of *ranked* processes via a single function call which *"spawns, executes, and terminates" the process group*.  The parent process can also participate in the group, thus trivially catching output of its ranked target function.
 
-It is designed work in Jupyter/IPython: locally defined functions and objects can be passed to the target function.  The Jupyter process which *"spawns, executes, and terminates" the process group*, can also participate the group, thus trivially catching output of its ranked target function, and present it to user.
+User can decorate the simplistic default behavior with *custom context manager* to setup/teardown environment or manage resources.
 
-User can leverage/enrich such simplistic behavior with *custom context manager* to setup/teardown execution environment.
+`mpify` is designed to work in Jupyter/IPython as well: locally defined functions and objects can be passed to the target function.
 
-One example is `mpify.TorchDDPCtx`, which can manage `torch` distributed data parallel (DDP) for multi-GPU model training.  Upon completion, *the trained model is returned to the foreground Jupyter process* which by `mpify` default, participated as the rank-`0` process in the DDP group.
+A Jupyter session can use a `mpify.TorchDDPCtx` to set up `torch` distributed data parallel (DDP) and participate as the rank-`0` process to train a model on multi-GPUs.  Upon completion, *the trained model will be returned to the interactive Jupyter session*.  For example:
 
-
-E.g. Adapting [the `fastai v2` notebook on training `imagenette`](https://github.com/fastai/course-v4/blob/master/nbs/07_sizing_and_tta.ipynb) to run on multiple GPUs within the interactive session.  From:
+#### To adapt [the `fastai v2` notebook on training `imagenette`](https://github.com/fastai/course-v4/blob/master/nbs/07_sizing_and_tta.ipynb) to use DDP training within the Jupyter notebook.
+From:
 
 <img src="/images/imagenette_07_orig.png" height="270">
 
@@ -22,7 +22,7 @@ To this:
 ###  Main features
   * Functions and objects defined in the same notebook can ride along via the target function's input parameter list --- *a feature not available from the current Python `multiprocessing` or `torch.multiprocessing`*.
   * A helper `mpify.import_star()` to handle `from X import *` within a function --- *a usage banned by Python*.
-  * In-n-out execution model: *spin-up -> execute -> spin-down & terminate* within a single call of `mpify.ranch()` which runs in the Jupyter *parent process*, spinning up and down children processes.
+  * In-n-out execution model: *spin-up -> execute -> spin-down & terminate* within a single call of `mpify.ranch()` in the parent process.
   * Process rank [`0..N-1`] and the group size `N` are stored in `os.environ`.  **The parent Jupyter process can participate, and it does by default as the rank-`0` process**, and it will receive the return value of target function run as rank-`0`.
 
   * User can provide a context manager to wrap around the target function execution: to manage resources and setup/teardown execution environment etc.. `mpify` provides `TorchDDPCtx` to illustrate the setup/tear-down of PyTorch's distributed data parallel training..
