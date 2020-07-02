@@ -15,7 +15,7 @@ From:
 
 To this:
 
-<img src="/images/imagenette_07_mpified.png" height="300">
+<img src="/images/imagenette_07_mpified.png" height="340">
 
 **`mpify`** is a thinner/lighter/more flexible follow-up to my other repo [`Ddip`](https://github.com/philtrade/Ddip), which uses a much bigger hammer of `ipyparallel` and a persistent process pool semantic for similar tasks.
 
