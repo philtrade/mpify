@@ -8,7 +8,7 @@ User can decorate the simplistic default behavior with *custom context manager* 
 
 A Jupyter session can use a `mpify.TorchDDPCtx` to set up `torch` distributed data parallel (DDP) and participate as the rank-`0` process to train a model on multi-GPUs.  Upon completion, *the trained model can be returned to the interactive Jupyter session*.  For example:
 
-#### To adapt [the `fastai v2` notebook on training `imagenette`](https://github.com/fastai/course-v4/blob/master/nbs/07_sizing_and_tta.ipynb) to use DDP training in Jupyter.
+#### To adapt [the `fastai v2` notebook on training `imagenette`](https://github.com/fastai/course-v4/blob/master/nbs/07_sizing_and_tta.ipynb) to train in DDP on 3 GPUs, in Jupyter.
 From:
 
 <img src="/images/imagenette_07_orig.png" height="270">
