@@ -1,8 +1,3 @@
-
-
-
-## Draft on Mpify ReadMe.md
-
 ### Overview 
 
 **`mpify`** is an simple API to run function (the "target function") on a group of *ranked* processes, and is designed work in Jupyter/IPython.  User can pass functions and objects defined in the notebook to the target function, and the Jupyter process can participate in the group as the rank-0 process.
@@ -11,11 +6,13 @@ User can customize/enrich its default simplistic behavior with custom context ma
 
 E.g. Adapting [the `fastai v2`notebook on training `imagenette`](https://github.com/fastai/course-v4/blob/master/nbs/07_sizing_and_tta.ipynb) to run on multiple GPUs within the interactive session.  From:
 
-<img src="/images/imagenette_07_orig.png" height="450">
+<img src="/images/imagenette_07_orig.png" height="270">
 
 To this:
 
-<img src="/images/imagenette_07_mpified.png" height="400">
+<img src="/images/imagenette_07_mpified.png" height="300">
+
+**`mpify`** is a thinner/lighter/more flexible follow-up to my other repo `Ddip`, which uses a much bigger hammer of `ipyparallel` and the persisten process pool semantic for similar tasks.
 
 ###  Main features
   * Functions and objects defined in the same notebook can ride along via the target function's input parameter list --- *a feature not available from the current Python `multiprocessing` or `torch.multiprocessing`*.
