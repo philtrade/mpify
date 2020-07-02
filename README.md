@@ -22,7 +22,7 @@ To this:
 ###  Main features
   * Functions and objects defined in the same notebook can ride along via the target function's input parameter list --- *a feature not available from the current Python `multiprocessing` or `torch.multiprocessing`*.
   * A helper `mpify.import_star()` to handle `from X import *` within a function --- *a usage banned by Python*.
-  * In-n-out execution model: *spin-up -> execute -> spin-down & terminate* within a single call of `ranch()`.  The Jupyter session is the *parent process*, it spins up and down children processes.
+  * In-n-out execution model: *spin-up -> execute -> spin-down & terminate* within a single call of `mpify.ranch()`.  The Jupyter session is the *parent process*, it spins up and down children processes.
   * Process rank [`0..N-1`] and the group size `N` are stored in `os.environ`.  **The parent Jupyter process can participate, and it does by default as the rank-`0` process**, and it will receive the return value of target function run as rank-`0`.
 
   * User can provide a context manager to wrap around the target function execution: to manage resources and setup/teardown execution environment etc.. `mpify` provides `TorchDDPCtx` to illustrate the setup/tear-down of PyTorch's distributed data parallel training..
@@ -84,7 +84,7 @@ To this:
   3. Launch it to 5 ranked processes:
   ```python
     import mpify
-    r = mypify.ranch(5, new_func, arg1, foo, objectA)
+    r = mpify.ranch(5, new_func, arg1, foo, objectA)
   ```
 
 ### A few technicalities when using `mpify`:
@@ -100,7 +100,7 @@ To this:
 - Upon completion, the Jupyter process can receive whatever the function returns from this rank's execution, but `return`s from the spawned processes are **discarded**.  Gathering results using `multiprocess.Queue` or `shared_memory` isn't supported in `mpify` yet, but would be a good exercise for the existing context manager mechanism described below.
 
 
-#### Resources mangement using custom context manager `ranch(... ctx=Blah ...)`:
+#### Resources mangement using custom context manager `mpify.ranch(... ctx=Blah ...)`:
 
 - `mpify.ranch(ctx=YourCtxMgr)` lets user wrap around the function execution:
 
@@ -114,9 +114,11 @@ To this:
   
   spawn -> [**set target GPU (initialize GPU context if not already) and DDP**]-> run function -> [**cleanup DDP**] -> terminate.
 
-- Either pass a custom `TorchDDPCtx` object to `mpify.ranch()`, or use the convenience routine `mpify.in_torchddp()`.  The two are equivalent below:
+- Either pass a custom `TorchDDPCtx` object to `mpify.ranch()`, or use the convenience routine `mpify.in_torchddp()`.  The following two calls are equivalent:
 
 ```python
+    from mpify import in_torchddp, ranch, TorchDDPCtx
+    
     # lazy, just use the default TorchDDPCtx() setting
     result = in_torchddp(world_size, create_and_train_model, *args, kwargs*)`
 
