@@ -12,7 +12,7 @@ To this:
 
 <img src="/images/imagenette_07_mpified.png" height="300">
 
-**`mpify`** is a thinner/lighter/more flexible follow-up to my other repo `Ddip`, which uses a much bigger hammer of `ipyparallel` and the persisten process pool semantic for similar tasks.
+**`mpify`** is a thinner/lighter/more flexible follow-up to my other repo [`Ddip`](https://github.com/philtrade/Ddip), which uses a much bigger hammer of `ipyparallel` and a persistent process pool semantic for similar tasks.
 
 ###  Main features
   * Functions and objects defined in the same notebook can ride along via the target function's input parameter list --- *a feature not available from the current Python `multiprocessing` or `torch.multiprocessing`*.
@@ -120,7 +120,7 @@ To this:
     result = ranch(world_size, create_and_train_model, *args, ctx=TorchDDPCtx(), kwargs*)
  ```
 
-More notebook examples may come along in the future.
+More notebook examples will come along in the future.
 
 
 References:
