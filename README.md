@@ -1,10 +1,15 @@
 ### Overview 
 
-**`mpify`** is an simple API to run function (the "target function") on a group of *ranked* processes, and is designed work in Jupyter/IPython.  User can pass functions and objects defined in the notebook to the target function, and the Jupyter process can participate in the group as the rank-0 process.
+**`mpify`** is an simple API to run function (the "target function") on a group of *ranked* processes via a single function call.
 
-User can customize/enrich its default simplistic behavior with custom context manager, e.g. to manage resources, distribute/collect results in rank-0 process, etc.
+It is designed work in Jupyter/IPython: locally defined functions and objects can be passed to the target function.  The Jupyter process which *"spawns, executes, and terminates" the process group*, can also participate the group, thus trivially catching output of its ranked target function, and present it to user.
 
-E.g. Adapting [the `fastai v2`notebook on training `imagenette`](https://github.com/fastai/course-v4/blob/master/nbs/07_sizing_and_tta.ipynb) to run on multiple GPUs within the interactive session.  From:
+User can leverage/enrich such simplistic behavior with *custom context manager* to setup/teardown execution environment.
+
+One example is `mpify.TorchDDPCtx`, which can manage `torch` distributed data parallel (DDP) for multi-GPU model training.  Upon completion, *the trained model is returned to the foreground Jupyter process* which by `mpify` default, participated as the rank-`0` process in the DDP group.
+
+
+E.g. Adapting [the `fastai v2` notebook on training `imagenette`](https://github.com/fastai/course-v4/blob/master/nbs/07_sizing_and_tta.ipynb) to run on multiple GPUs within the interactive session.  From:
 
 <img src="/images/imagenette_07_orig.png" height="270">
 
