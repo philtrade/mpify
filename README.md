@@ -22,7 +22,7 @@ To this:
 ###  Main features
   * Functions and objects defined in the same notebook can ride along via the target function's input parameter list --- *a feature not available from the current Python `multiprocessing` or `torch.multiprocessing`*.
   * A helper `mpify.import_star()` to handle `from X import *` within a function --- *a usage banned by Python*.
-  * In-n-out execution model: *spin-up -> execute -> spin-down & terminate* within a single call of `mpify.ranch()`.  The Jupyter session is the *parent process*, it spins up and down children processes.
+  * In-n-out execution model: *spin-up -> execute -> spin-down & terminate* within a single call of `mpify.ranch()` which runs in the Jupyter *parent process*, spinning up and down children processes.
   * Process rank [`0..N-1`] and the group size `N` are stored in `os.environ`.  **The parent Jupyter process can participate, and it does by default as the rank-`0` process**, and it will receive the return value of target function run as rank-`0`.
 
   * User can provide a context manager to wrap around the target function execution: to manage resources and setup/teardown execution environment etc.. `mpify` provides `TorchDDPCtx` to illustrate the setup/tear-down of PyTorch's distributed data parallel training..
