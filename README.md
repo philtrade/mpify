@@ -6,7 +6,7 @@ User can decorate the simplistic default behavior with *custom context manager* 
 
 `mpify` is designed to work in Jupyter/IPython as well: locally defined functions and objects can be passed to the target function.
 
-A Jupyter session can use a `mpify.TorchDDPCtx` to set up `torch` distributed data parallel (DDP) and participate as the rank-`0` process to train a model on multi-GPUs.  Upon completion, *the trained model will be returned to the interactive Jupyter session*.  For example:
+A Jupyter session can use a `mpify.TorchDDPCtx` to set up `torch` distributed data parallel (DDP) and participate as the rank-`0` process to train a model on multi-GPUs.  Upon completion, *the trained model can be returned to the interactive Jupyter session*.  For example:
 
 #### To adapt [the `fastai v2` notebook on training `imagenette`](https://github.com/fastai/course-v4/blob/master/nbs/07_sizing_and_tta.ipynb) to use DDP training within the Jupyter notebook.
 From:
