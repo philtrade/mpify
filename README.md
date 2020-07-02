@@ -1,6 +1,6 @@
 ### Overview 
 
-**`mpify`** is an simple API to run function (the "target function") on a group of *ranked* processes via a single function call which *"spawns, executes, and terminates" the process group*.  The parent process can also participate in the group, thus trivially catching output of its ranked target function.
+**`mpify`** is a simple API to run function (the "target function") on a group of *ranked* processes via a single function call which *"spawns, executes, and terminates" the process group*.  The parent process can also participate in the group, thus trivially catching output of its ranked target function.
 
 User can decorate the simplistic default behavior with *custom context manager* to setup/teardown environment or manage resources.
 
