@@ -1,6 +1,6 @@
 import os, inspect, multiprocess as mp
 from typing import Callable
-from contextlib import AbstractContextManager
+from contextlib import AbstractContextManager, nullcontext
 import torch
 
 __all__ = ['import_star', 'ranch', 'TorchDDPCtx', 'in_torchddp']
@@ -21,17 +21,21 @@ def import_star(modules=[]):
     finally:
         del cf   # Recommendation from https://docs.python.org/3/library/inspect.html#the-interpreter-stack
 
-def _contextualize(fn:Callable, cm:AbstractContextManager):
-    "Wrap a context manager around a function's execution."
+def _contextualize(i, g, ws, fn:Callable, cm:AbstractContextManager, l=None):
+    "Return a function that will setup os.environ and execute a target function within a context manager."
+    assert i < len(l), ValueError("Invalid index {i} > result list size: {len(l)}")
     def _cfn(*args, **kwargs):
-        with cm: return fn(*args, **kwargs)
+        os.environ.update({"LOCAL_RANK":str(i), "RANK":str(g), "WORLD_SIZE":str(ws)})
+        with cm or nullcontext(): r = fn(*args, **kwargs)
+        if l: l[i] = r
+        for k in ("LOCAL_RANK", "RANK", "WORLD_SIZE"): os.environ.pop(k) 
+        return r
     return _cfn
 
-def ranch(nprocs:int, fn:Callable, *args, parent_rank:int=0, host_rank:int=0, ctx=None, **kwargs):
-    '''Launch `fn(*args, **kwargs)` to `nprocs` spawned processes. Local rank, global rank (multiple hosts),
-       and world size are set in os.environ['LOCAL_RANK','RANK','WORLD_SIZE'] respectively.
-       Parent process can participate as rank_{parent_rank}.
-       Can optionally apply a context manager `ctx` around `fn(...)`.'''
+def ranch(nprocs:int, fn:Callable, *args, parent_rank:int=0, gather:bool=True, host_rank:int=0, ctx=None, **kwargs):
+    '''Launch `fn(*args, **kwargs)` to `nprocs` spawned processes. Sets up distrib environ, caller can participate as parent_rank.
+    Apply ctx mgr if provided. Returns results from each proc in a list, or None if `gather` is False.
+    '''
     assert nprocs > 0, ValueError("nprocs: # of processes to launch must be > 0")
     children_ranks = list(range(nprocs))
     if parent_rank is not None:
@@ -39,25 +43,21 @@ def ranch(nprocs:int, fn:Callable, *args, parent_rank:int=0, host_rank:int=0, ct
         children_ranks.pop(parent_rank)
 
     multiproc_ctx = mp.get_context("spawn")
-
-    procs = []
+    result_list = multiproc_ctx.Manager().list([None] * nprocs) if gather else None
+    procs, base_rank = [], host_rank * nprocs
     try:
-        os.environ["WORLD_SIZE" ], base_rank = str(nprocs), host_rank * nprocs
-        target_fn = _contextualize(fn, ctx) if ctx else fn
-
         for rank in children_ranks:
-            os.environ.update({"LOCAL_RANK":str(rank), "RANK":str(rank + base_rank)})
+            target_fn = _contextualize(rank, rank+base_rank, nprocs, fn, ctx, result_list)
             p = multiproc_ctx.Process(target=target_fn, args=args, kwargs=kwargs)
             procs.append(p)
             p.start()
 
-        if parent_rank is not None: # also run it in current process at a rank
-            os.environ.update({"LOCAL_RANK":str(parent_rank), "RANK":str(parent_rank + base_rank)})
-            return target_fn(*args, **kwargs)
-        else: return procs
+        if parent_rank is not None: # also run target in current process at a rank
+            (_contextualize(parent_rank, parent_rank+base_rank, nprocs, fn, ctx, result_list))(*args, **kwargs)
+        return result_list
+
     except Exception as e: raise Exception(e) from e
     finally:
-        for k in ["WORLD_SIZE", "RANK", "LOCAL_RANK"]: os.environ.pop(k, None)
         for p in procs: p.join()
 
 class TorchDDPCtx(AbstractContextManager):
@@ -73,7 +73,6 @@ class TorchDDPCtx(AbstractContextManager):
             torch.cuda.set_device(int(os.environ.get('LOCAL_RANK', 0)))
             self._backend = 'nccl'
         if not torch.distributed.is_initialized():
-            print(f"rank[{os.environ['LOCAL_RANK']}] proc {os.getpid()} Initializing torch DDP: world size: {os.environ['WORLD_SIZE']}, backend: {self._backend}", flush=True)
             torch.distributed.init_process_group(backend=self._backend, init_method='env://')
             self._myddp = torch.distributed.is_initialized()
         return self
@@ -86,4 +85,4 @@ class TorchDDPCtx(AbstractContextManager):
 
 def in_torchddp(nprocs:int, fn:Callable, *args, ctx:TorchDDPCtx=None, **kwargs):
     "Launch `fn(*args, **kwargs)` in Torch DDP group of `nprocs` processes.  Can customize the TorchddpCtx context."
-    return ranch(nprocs, fn, *args, ctx = TorchDDPCtx() if ctx is None else ctx, **kwargs)
+    return ranch(nprocs, fn, *args, ctx = TorchDDPCtx() if ctx is None else ctx, **kwargs)[0]
