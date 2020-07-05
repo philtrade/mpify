@@ -32,16 +32,16 @@ def _contextualize(i, g, ws, fn:Callable, cm:AbstractContextManager, l=None):
         return r
     return _cfn
 
-def ranch(nprocs:int, fn:Callable, *args, parent_rank:int=0, catchall:bool=True, host_rank:int=0, ctx=None, **kwargs):
-    '''Spawn `nprocs` ranked process and launch `fn(*args, **kwargs)`. Caller process can participate as `parent_rank`.
-    Apply ctx mgr if provided. `catchall`: If True (default), return list of all function return values; otherwise return that executed in the parent rank process, and that requires `parent_rank` be defined.
+def ranch(nprocs:int, fn:Callable, *args, caller_rank:int=0, catchall:bool=True, host_rank:int=0, ctx=None, **kwargs):
+    '''Spawn `nprocs` ranked process and launch `fn(*args, **kwargs)`. Caller process can participate as `caller_rank`.
+    Apply ctx mgr if provided. `catchall`: If True (default), return list of all function return values; otherwise return that executed in the parent rank process, and that requires `caller_rank` be defined.
     '''
     assert nprocs > 0, ValueError("nprocs: # of processes to launch must be > 0")
     
     children_ranks = list(range(nprocs))
-    if parent_rank is not None:
-        assert 0 <= parent_rank < nprocs, ValueError(f"Out of range parent_rank:{parent_rank}, must be 0 <= parent_rank < {nprocs}")
-        children_ranks.pop(parent_rank)
+    if caller_rank is not None:
+        assert 0 <= caller_rank < nprocs, ValueError(f"Out of range caller_rank:{caller_rank}, must be 0 <= caller_rank < {nprocs}")
+        children_ranks.pop(caller_rank)
 
     multiproc_ctx = mp.get_context("spawn")
     p_res, result_list = None, multiproc_ctx.Manager().list([None] * nprocs) if catchall else None
@@ -52,8 +52,8 @@ def ranch(nprocs:int, fn:Callable, *args, parent_rank:int=0, catchall:bool=True,
             p = multiproc_ctx.Process(target=target_fn, args=args, kwargs=kwargs)
             procs.append(p)
             p.start()
-        if parent_rank is not None: # also run target in current process at a rank
-            p_res = (_contextualize(parent_rank, parent_rank+base_rank, nprocs, fn, ctx, result_list))(*args, **kwargs)
+        if caller_rank is not None: # also run target in current process at a rank
+            p_res = (_contextualize(caller_rank, caller_rank+base_rank, nprocs, fn, ctx, result_list))(*args, **kwargs)
         return result_list if catchall else p_res
     except Exception as e:
         raise Exception(e) from e
@@ -85,4 +85,4 @@ class TorchDDPCtx(AbstractContextManager):
 def in_torchddp(nprocs:int, fn:Callable, *args, ctx:TorchDDPCtx=None, **kwargs):
     "Launch `fn(*args, **kwargs)` in Torch DDP group of `nprocs` processes.  Can customize the TorchddpCtx context."
     if ctx is None: ctx = TorchDDPCtx()
-    return ranch(nprocs, fn, *args, parent_rank=0, catchall=False, ctx=ctx,  **kwargs)
+    return ranch(nprocs, fn, *args, caller_rank=0, catchall=False, ctx=ctx,  **kwargs)
