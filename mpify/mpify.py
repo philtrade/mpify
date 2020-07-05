@@ -23,7 +23,7 @@ def import_star(modules=[]):
 
 def _contextualize(i, g, ws, fn:Callable, cm:AbstractContextManager, l=None):
     "Return a function that will setup os.environ and execute a target function within a context manager."
-    assert i < len(l), ValueError("Invalid index {i} > result list size: {len(l)}")
+    if l: assert i < len(l), ValueError("Invalid index {i} > result list size: {len(l)}")
     def _cfn(*args, **kwargs):
         os.environ.update({"LOCAL_RANK":str(i), "RANK":str(g), "WORLD_SIZE":str(ws)})
         with cm or nullcontext(): r = fn(*args, **kwargs)
@@ -32,18 +32,19 @@ def _contextualize(i, g, ws, fn:Callable, cm:AbstractContextManager, l=None):
         return r
     return _cfn
 
-def ranch(nprocs:int, fn:Callable, *args, parent_rank:int=0, gather:bool=True, host_rank:int=0, ctx=None, **kwargs):
-    '''Launch `fn(*args, **kwargs)` to `nprocs` spawned processes. Sets up distrib environ, caller can participate as parent_rank.
-    Apply ctx mgr if provided. Returns results from each proc in a list, or None if `gather` is False.
+def ranch(nprocs:int, fn:Callable, *args, parent_rank:int=0, catchall:bool=True, host_rank:int=0, ctx=None, **kwargs):
+    '''Spawn `nprocs` ranked process and launch `fn(*args, **kwargs)`. Caller process can participate as `parent_rank`.
+    Apply ctx mgr if provided. `catchall`: If True (default), return list of all function return values; otherwise return that executed in the parent rank process, and that requires `parent_rank` be defined.
     '''
     assert nprocs > 0, ValueError("nprocs: # of processes to launch must be > 0")
+    
     children_ranks = list(range(nprocs))
     if parent_rank is not None:
         assert 0 <= parent_rank < nprocs, ValueError(f"Out of range parent_rank:{parent_rank}, must be 0 <= parent_rank < {nprocs}")
         children_ranks.pop(parent_rank)
 
     multiproc_ctx = mp.get_context("spawn")
-    result_list = multiproc_ctx.Manager().list([None] * nprocs) if gather else None
+    p_res, result_list = None, multiproc_ctx.Manager().list([None] * nprocs) if catchall else None
     procs, base_rank = [], host_rank * nprocs
     try:
         for rank in children_ranks:
@@ -51,24 +52,22 @@ def ranch(nprocs:int, fn:Callable, *args, parent_rank:int=0, gather:bool=True, h
             p = multiproc_ctx.Process(target=target_fn, args=args, kwargs=kwargs)
             procs.append(p)
             p.start()
-
         if parent_rank is not None: # also run target in current process at a rank
-            (_contextualize(parent_rank, parent_rank+base_rank, nprocs, fn, ctx, result_list))(*args, **kwargs)
-        return result_list
-
-    except Exception as e: raise Exception(e) from e
+            p_res = (_contextualize(parent_rank, parent_rank+base_rank, nprocs, fn, ctx, result_list))(*args, **kwargs)
+        return result_list if catchall else p_res
+    except Exception as e:
+        raise Exception(e) from e
     finally:
         for p in procs: p.join()
 
 class TorchDDPCtx(AbstractContextManager):
     "Setup/teardown Torch DDP when entering/exiting a `with` clause."
     def __init__(self, *args, addr:str="127.0.0.1", port:int=29500, num_threads:int=1, **kwargs):
-        self._a, self._p, self._nt = addr, port, num_threads
+        self._a, self._p, self._nt = addr, str(port), str(num_threads)
         self._myddp, self._backend = False, 'gloo' # default to CPU backend
 
     def __enter__(self):
-        os.environ.update({"MASTER_ADDR":self._a, "MASTER_PORT":str(self._p),
-                           "OMP_NUM_THREADS":str(self._nt)})
+        os.environ.update({"MASTER_ADDR":self._a, "MASTER_PORT":self._p, "OMP_NUM_THREADS":self._nt})
         if torch.cuda.is_available():
             torch.cuda.set_device(int(os.environ.get('LOCAL_RANK', 0)))
             self._backend = 'nccl'
@@ -85,4 +84,5 @@ class TorchDDPCtx(AbstractContextManager):
 
 def in_torchddp(nprocs:int, fn:Callable, *args, ctx:TorchDDPCtx=None, **kwargs):
     "Launch `fn(*args, **kwargs)` in Torch DDP group of `nprocs` processes.  Can customize the TorchddpCtx context."
-    return ranch(nprocs, fn, *args, ctx = TorchDDPCtx() if ctx is None else ctx, **kwargs)[0]
+    if ctx is None: ctx = TorchDDPCtx()
+    return ranch(nprocs, fn, *args, parent_rank=0, catchall=False, ctx=ctx,  **kwargs)
