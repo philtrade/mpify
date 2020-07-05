@@ -1,11 +1,12 @@
 ## Overview 
 
-**`mpify`** is a simple API to launch a "target function" parallelly to multiple *ranked* processes via a single blocking call. By addressing a few practical issues:
+**`mpify`** is a simple API to launch a "target function" parallelly to multiple *ranked* processes via a single blocking call. With the following features:
 
-   * freeing up **subprocess resources (e.g. Multiple GPU contexts)** upon completion,
-   * letting the **caller process to participate** as a ranked worker  (`parent_rank=N`),
-   * **supporting `from X import *` and locally defined functions and objects in Jupyter to be accessible to the target function in subprocesses**,
-   * accepting user defined context manager to manage resources around the target function execution. (`ctx=your_context_manager`)
+   * sub-processes will exit upon function return, thus **freeing up resources (e.g. Multiple GPU contexts)**,
+   * **caller process may participate** as a ranked worker and receive the return object from taret function,
+   * **locally defined functions and objects in Jupyter can be passed to the target function in subprocesses**,
+   * provide mechanism to **support `from X import *` within the target function**,
+   * user can **use context manager to manage resources around the execution** of the target function,
 
 `mpify` hopes to make multiprocess experiments in Jupyter notebook a little easier (although it works in batch script as well.):
 
