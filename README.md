@@ -1,14 +1,17 @@
-### Overview 
+## Overview 
 
-**`mpify`** is a simple API to run function (the "target function") on a group of *ranked* processes via a single function call which *"spawns, executes, and terminates" the process group*.  The parent process can also participate in the group, thus trivially catching output of its ranked target function.
+**`mpify`** is a simple API to launch a "target function" parallelly to multiple *ranked* processes via a single blocking call. By addressing a few practical issues:
 
-User can decorate the simplistic default behavior with *custom context manager* to setup/teardown environment or manage resources.
+   * freeing up **subprocess resources (e.g. Multiple GPU contexts)** upon completion,
+   * letting the **caller process to participate** as a ranked worker  (`parent_rank=N`),
+   * **supporting `from X import *` and locally defined functions and objects in Jupyter to be accessible to the target function in subprocesses**,
+   * accepting user defined context manager to manage resources around the target function execution. (`ctx=your_context_manager`)
 
-`mpify` is designed to work in Jupyter/IPython as well: locally defined functions and objects can be passed to the target function.
+`mpify` hopes to make multiprocess experiments in Jupyter notebook a little easier (although it works in batch script as well.):
 
-A Jupyter session can use a `mpify.TorchDDPCtx` to set up `torch` distributed data parallel (DDP) and participate as the rank-`0` process to train a model on multi-GPUs.  Upon completion, *the trained model can be returned to the interactive Jupyter session*.  For example:
+E.g. `fastai v2` users can train model using multiple GPUs in distributed data parallel (DDP), all inside Jupyter, without any IPython `%%` magic, or custom loop to handle asynchronous multiprocess results, or struggling to pass locally defined function to the training loop and get back trained Learner upon completion..... using the convenient wrapper `in_torchddp()`:
 
-#### To adapt [the `fastai v2` notebook on training `imagenette`](https://github.com/fastai/course-v4/blob/master/nbs/07_sizing_and_tta.ipynb) to train in DDP on 3 GPUs, in Jupyter.
+### To adapt [the `fastai v2` notebook on training `imagenette`](https://github.com/fastai/course-v4/blob/master/nbs/07_sizing_and_tta.ipynb) to train in DDP on 3 GPUs, in Jupyter.
 From:
 
 <img src="/images/imagenette_07_orig.png" height="270">
@@ -17,35 +20,49 @@ To this:
 
 <img src="/images/imagenette_07_mpified.png" height="340">
 
-**`mpify`** is a thinner/lighter/more flexible follow-up to my other repo [`Ddip`](https://github.com/philtrade/Ddip), which uses a much bigger hammer of `ipyparallel` and a persistent process pool semantic for similar tasks.
 
-###  Main features
-  * Functions and objects defined in the same notebook can ride along via the target function's input parameter list --- *a feature not available from the current Python `multiprocessing` or `torch.multiprocessing`*.
-  * A helper `mpify.import_star()` to handle `from X import *` within a function --- *a usage banned by Python*.
-  * In-n-out execution model: *spin-up -> execute -> spin-down & terminate* within a single call of `mpify.ranch()` in the parent process.
-  * Process rank [`0..N-1`] and the group size `N` are stored in `os.environ`.  **The parent Jupyter process can participate, and it does by default as the rank-`0` process**, and it will receive the return value of target function run as rank-`0`.
+## API and Usage Guide
 
-  * User can provide a context manager to wrap around the target function execution: to manage resources and setup/teardown execution environment etc.. `mpify` provides `TorchDDPCtx` to illustrate the setup/tear-down of PyTorch's distributed data parallel training..
+> <b>import_star</b>(<i>module_list:[str]</i>)
 
-**Mpify** was conceived to overcome the many quirks of *getting Python multiprocess x Jupyter x multiple CUDA GPUs on {Windows or Unix}* to cooperate. <include link to blog when available>
+  Use this helper `mpify.import_star(['X',...])` in the target function to perform `from X import *` --- *a usage banned by Python*.
+
+> <b>ranch</b>(<i>nprocs:int, fn:Callable, *args, caller_rank:int=0, catchall:bool=True, host_rank:int=0, ctx=None, **kwargs</i>)
+>
+> Launch a group of ranked process (0..`nprocs-1` inclusive) to execute target function `fn(*args, **kwargs)` in parallel.
+>
+> Returns: a list of return values from each process, or that from the caller process.  See `catchall` and `caller_rank` below.
+>
+> A few generic distributed attributes will be available to `fn()`. *Local rank*, *global rank*, *world size* are stored in `os.environ['LOCAL_RANK, RANK, and WORLD_SIZE']` --- not that they are strings, not integers, as with all things in `os.environ`.  Their definitions follow the PyTorch's [distributed data parallel convention](https://discuss.pytorch.org/t/what-is-the-difference-between-rank-and-local-rank/61940).
+
+<i>`nprocs: int`</i> -- Number of worker processes
+
+<i>`fn, *args, and **kwargs`</i> -- target function and its calling parameters.
+
+<i>`caller_rank: int`</i> -0 The worker process rank of the caller, if not None.
+ By default the caller process will participate as rank-0.  If the caller process does not want to participate, set `caller_rank` to None.
+
+<i>`catchall: bool`</i>: If True, `ranch()` returns a list of return values from all processes.  If `False`, and if `caller_rank` is defined, return the value of the `caller_rank` execution of the target function.  Otherwise `ranch()` will return `None`.
+
+> <b>in_torchddp</b>(<i>nprocs:int, fn:Callable, *args, ctx:TorchDDPCtx=None, **kwargs</i>):
+>
+> - Launch `fn` to `nprocs` processes, and caller process participates as `rank-0`.  Set up the torch distributed data parallel process group environment -- initialize, execute `fn(*args, **kwargs)`, tearn down, then return only the `rank-0` execution result.
+>
+>
+> <b>TorchDDPCtx</b> - A sample context manager that manages the Torch DDP setup/teardown around the target function execution.
 
 
-### Usage 
+## Usage 
 
-  * Say the notebook has defined function `foo()` or `objectA`, and `myfunc()` needs them.  To adapt `myfunc()` to run on multiple processes within the notebook, make two changes, so that all the resources `myfunc()` needs are accessible when it's called:
-  
-  1. First, pass `foo` and `objectA` as parameters of `myfunc()`:
-  
-  ```python
-    def myfunc(..., foo, objectA, ...):
-    
-        < use foo() and objectA as before >
-  ```
-  2. Second, import modules that `myfunc()` needs at the top, because `myfunc()` will be run on a clean, fresh Python interpreter process.  To handle `from X import *`, use `mpify.import_star(['X'])`:
-  
-  E.g.: Originally the notebook may have the following:
-  ```
-    # At the notebook beginning:
+The rule of thumb rule is: the target function must be self-contained, well encapsulated because it'll be executed on a fresh Python interpreter process.  Thus:
+
+> <i> Spell all local objects it needs (e.g. `foo()` or `objA`) in the parameters.  Import all modules its needs at the top.  To handle `from X import *`, use `mpify.import_star(['X'])` </i>
+>
+>  <i>Process rank is available from `os.environ['RANK']`.</i>
+
+Example: If originally things were defined like this:
+```ipython
+[1] # At the notebook beginning:
     from utils import *
     from fancy import *
     import numpy as np
@@ -53,84 +70,76 @@ To this:
     from torch.distributed import *
     
     # some cells later
-    def foo():
-       ...
-       
-    # and later
-    objectA = 100
-    
-    def func_happy_as_single_process(arg1): #
-        x = np.array([objectA])
-        foo(x)
-        ...
-  ```
-    
-  To adapt `func_happy_as_single_process` to be multiprocess-friendly, one can write:
+[2] def foo():
+      ...   
+  # and later
+[3] objA = 100
   
-  ```python
-    def new_func(arg1, foo, objectA **kwargs):
-        from Mpify import import_star      # Helper to handle "from X import *" syntax
-        import_star(['utils', 'fancy'])
-        import numpy as np                 # Imports earlier in notebook are copied here.
-        import torch
-        import_star(['torch.distributed'])
-        
-        x = np.array([objectA])
-        foo(x)
-        ...
-        if os.environ.get('RANK', '0') == '0': return f"Rank-0 process returning"
-  ```
+[4] def target_fn(*args, **kwargs):
+      x = np.array([objA])        # external
+      foo(x)
+      ...
+```
+    
+Rewrite target_fn like this:
+  
+```python
+[5] def target_fn(arg, ....foo, objA, ... **kwargs):
+      from mpify import import_star
+      import_star(['utils', 'fancy'])  # *-imports here
+      import numpy as np               # then other imports
+      import torch
+      import_star(['torch.distributed'])
+      
+      x = np.array([objA])
+      foo(x)
+      ...
+      # can use os.environ['RANK'] to see its process rank.
+```
 
-  3. Launch it to 5 ranked processes:
-  ```python
-    import mpify
-    r = mpify.ranch(5, new_func, arg1, foo, objectA)
-  ```
-
-### A few technicalities when using `mpify`:
-#### At the functions, objects, namespace level:
-- Functions and lambdas defined locally **within** the Jupyter notebook can be passed to spawned children processes, thanks to the excellent [`multiprocess` libray](https://github.com/uqfoundation/multiprocess), an actively supported alternative to Python's default `multiprocessing` and `torch.multiprocessing`.  Simply list them as target function parameters.
-
-#### At the process level:
-
-- In each process, generic distributed attributes such as *local rank*, *global rank*, *world size* will be passed to `os.environ` dictionary as `LOCAL_RANK, RANK, and WORLD_SIZE` (note: values are strings, not integers in `os.environ`).  Their definitions follow the PyTorch's [distributed data parallel convention](https://discuss.pytorch.org/t/what-is-the-difference-between-rank-and-local-rank/61940).
-
-- The interactive Jupyter session itself participates as rank-0 process by default.  Because it runs in the foreground, user can use widgets such as `tqdm` and `fastprogress` to visualize the function progress.
-
-- Upon completion, the Jupyter process can receive whatever the function returns from this rank's execution, but `return`s from the spawned processes are **discarded**.  Gathering results using `multiprocess.Queue` or `shared_memory` isn't supported in `mpify` yet, but would be a good exercise for the existing context manager mechanism described below.
+To launch it to 5 ranked processes, and `r` below will receive a list of 5 return values.  `r[i]` is from `rank-i` execution, 
+```python
+[6] import mpify
+    r = mpify.ranch(5, target_fn, arg,... foo, objA, ...other kwargs)
+```
 
 
-#### Resources mangement using custom context manager `mpify.ranch(... ctx=Blah ...)`:
+### Resources mangement using custom context manager `mpify.ranch(... ctx=Blah ...)`:
 
-- `mpify.ranch(ctx=YourCtxMgr)` lets user wrap around the function execution:
+`mpify.ranch(ctx=YourCtxMgr)` lets user wrap around the function execution:
 
-  spawn -> [`ctx.__enter__()`]-> run function -> [`ctx.__exit__()`] -> terminate.
+<i>spawn -> [`ctx.__enter__()`]-> run function -> [`ctx.__exit__()`] -> terminate</i>
 
-- Use it to set up execution environment, manage resources, open/close database or network connection, or even plug the target function into a pipeline of functions.  Do fun and boring things.
 
-`mpify` provides `TorchDDPCtx` to setup/tear-down of PyTorch's distributed data parallel: 
+**As an example**, `mpify` provides `TorchDDPCtx` to setup/tear-down of PyTorch's distributed data parallel: 
 
 - `TorchDDPCtx` does the "bold stuff":
   
-  spawn -> [**set target GPU (initialize GPU context if not already) and DDP**]-> run function -> [**cleanup DDP**] -> terminate.
+  spawn -> [**set target GPU, and initialize torch DDP group**]-> run function -> [**cleanup DDP**] -> terminate.
 
-- Either pass a custom `TorchDDPCtx` object to `mpify.ranch()`, or use the convenience routine `mpify.in_torchddp()`.  The following two calls are equivalent:
+`TorchDDPCtx` can be customized to use different address and port, but a default `TorchDDPCtx()` is used by `mpify`'s  convenience routine `mpify.in_torchddp()`.
+
+The following two calls are equivalent:
 
 ```python
     from mpify import in_torchddp, ranch, TorchDDPCtx
     
-    # lazy, just use the default TorchDDPCtx() setting
-    result = in_torchddp(world_size, create_and_train_model, *args, kwargs*)`
+    # The same t'ing
 
-    # or more explicit, can be your own context manager:
+    result = in_torchddp(world_size, create_and_train_model, *args, **kwargs)
 
-    result = ranch(world_size, create_and_train_model, *args, ctx=TorchDDPCtx(), kwargs*)
+    # OR 
+    result = ranch(world_size, create_and_train_model, *args, caller_rank=0, catchall=False, ctx=TorchDDPCtx(), **kwargs)
  ```
 
 More notebook examples will come along in the future.
 
 
-References:
+## References:
+
+**Mpify** was conceived to overcome the many quirks of *getting Python multiprocess x Jupyter x multiple CUDA GPUs on {Windows or Unix}* to cooperate. <include link to blog when available> It is also a thinner/lighter/more flexible follow-up to my other repo [`Ddip`](https://github.com/philtrade/Ddip), which uses `ipyparallel`.
+
+* The [`multiprocess` libray](https://github.com/uqfoundation/multiprocess), an actively supported alternative to Python's default `multiprocessing` and `torch.multiprocessing`. 
 * General structure follows https://pytorch.org/tutorials/intermediate/dist_tuto.html and https://pytorch.org/docs/stable/notes/multiprocessing.html
 * On using `multiprocess` instead of `multiprocessing` and `torch.multiprocessing`: https://hpc-carpentry.github.io/hpc-python/06-parallel/ 
 * On `from module import *` within a function: https://stackoverflow.com/questions/41990900/what-is-the-function-form-of-star-import-in-python-3
