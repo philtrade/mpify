@@ -28,13 +28,15 @@ To this:
 
   Use this helper `mpify.import_star(['X',...])` in the target function to perform `from X import *` --- *a usage banned by Python*.
 
+------
+
 > <b>ranch</b>(<i>nprocs:int, fn:Callable, *args, caller_rank:int=0, catchall:bool=True, host_rank:int=0, ctx=None, **kwargs</i>)
->
-> Launch a group of ranked process (0..`nprocs-1` inclusive) to execute target function `fn(*args, **kwargs)` in parallel.
->
-> Returns: a list of return values from each process, or that from the caller process.  See `catchall` and `caller_rank` below.
->
-> A few generic distributed attributes will be available to `fn()`. *Local rank*, *global rank*, *world size* are stored in `os.environ['LOCAL_RANK, RANK, and WORLD_SIZE']` --- not that they are strings, not integers, as with all things in `os.environ`.  Their definitions follow the PyTorch's [distributed data parallel convention](https://discuss.pytorch.org/t/what-is-the-difference-between-rank-and-local-rank/61940).
+
+  Launch a group of ranked process (0..`nprocs-1` inclusive) to execute target function `fn(*args, **kwargs)` in parallel.
+
+  Returns: a list of return values from each process, or that from the caller process.  See `catchall` and `caller_rank` below. 
+  
+  A few generic distributed attributes will be available to `fn()`. *Local rank*, *global rank*, *world size* are stored in `os.environ['LOCAL_RANK, RANK, and WORLD_SIZE']` --- note that they are strings, not integers, as with all things in `os.environ`.  Their definitions follow PyTorch's [distributed data parallel convention](https://discuss.pytorch.org/t/what-is-the-difference-between-rank-and-local-rank/61940).
 
 <i>`nprocs: int`</i> -- Number of worker processes
 
@@ -45,12 +47,16 @@ To this:
 
 <i>`catchall: bool`</i>: If True, `ranch()` returns a list of return values from all processes.  If `False`, and if `caller_rank` is defined, return the value of the `caller_rank` execution of the target function.  Otherwise `ranch()` will return `None`.
 
+------
+
 > <b>in_torchddp</b>(<i>nprocs:int, fn:Callable, *args, ctx:TorchDDPCtx=None, **kwargs</i>):
->
-> - Launch `fn` to `nprocs` processes, and caller process participates as `rank-0`.  Set up the torch distributed data parallel process group environment -- initialize, execute `fn(*args, **kwargs)`, tearn down, then return only the `rank-0` execution result.
->
->
-> <b>TorchDDPCtx</b> - A sample context manager that manages the Torch DDP setup/teardown around the target function execution.
+
+  Launch `fn` to `nprocs` processes, and caller process participates as `rank-0`.  Set up the torch distributed data parallel process group environment -- initialize, execute `fn(*args, **kwargs)`, tearn down, then return only the `rank-0` execution result.
+
+
+> <b>TorchDDPCtx</b>
+
+  A sample context manager that manages the Torch DDP setup/teardown around the target function execution.
 
 
 ## Usage 
