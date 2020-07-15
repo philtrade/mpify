@@ -2,7 +2,7 @@
 
 **`mpify`** is a simple API to launch a "target function" parallelly on a group of *ranked* processes via a single blocking call, with the following features:
    * **Caller process can participate** as a ranked worker (by default as local rank 0)
-   * **Return values from all workers** can be gathered in a list, or only that from the caller process (if it participates).
+   * **Return values from all workers** can be gathered in a list. Or, caller can choose to only receive its own single result if it participates.
    * **One-use semantic**: sub-processes are terminated upon function completion, thus freeing up resources (e.g. Multiple GPU contexts)
    * **Jupyter/IPython-friendly**, locally defined functions and objects are accessible in the subprocesses via the *target function parameters*
    * **A mechanism for ("`from X import *`") within a function**, and
@@ -106,7 +106,7 @@ The rule of thumb rule is: the target function must be self-contained, well enca
 >
 >  <i>Each process can find out its rank in `os.environ['RANK']`, and the group size in `os.environ['WORLD_SIZE']`.</i>
 
-Example: If originally things were defined like this in a notebook.
+Example: Like any notebook, modules are loaded, new objects and functions defined, and they are used later by a function `target_fn`:
 
 ```ipython
 [1] # At the notebook beginning:
@@ -123,12 +123,12 @@ Example: If originally things were defined like this in a notebook.
 [3] objA = 100
   
 [4] def target_fn(*args, **kwargs):
-      x = np.array([objA])        # external
+      x = np.array([objA])
       foo(x)
       ...
 ```
     
-Rewrite target_fn like this:
+To run `target_fn` in parallel on some subprocess:
   
 ```python
 [5] def target_fn(foo, objA, *args, **kwargs):
@@ -146,7 +146,7 @@ Rewrite target_fn like this:
 To launch it to 5 ranked processes, and `r` below will receive a list of 5 return values.  `r[i]` is from `rank-i` execution: 
 
 [6] import mpify
-    r = mpify.ranch(5, target_fn,foo, objA, ...other args and kwargs)
+    r = mpify.ranch(5, target_fn,foo, objA, .. gather=True)
 ```
 
 
