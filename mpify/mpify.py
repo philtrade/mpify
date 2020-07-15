@@ -24,8 +24,7 @@ def import_star(modules=[]):
                     to_import[name] = getattr(m, name)
                 g.update(to_import)
             except Exception as e: raise ImportError(f"Failed to import module {mod}") from e
-    finally:
-        del cf   # per https://docs.python.org/3/library/inspect.html#the-interpreter-stack
+    finally: del cf   # per https://docs.python.org/3/library/inspect.html#the-interpreter-stack
 
 def _contextualize(i:int, nprocs:int, fn:Callable, cm:AbstractContextManager, l=None):
     "Return a function that will setup os.environ and execute a target function within a context manager."
@@ -36,9 +35,7 @@ def _contextualize(i:int, nprocs:int, fn:Callable, cm:AbstractContextManager, l=
             with cm or nullcontext(): r = fn(*args, **kwargs)
             if l: l[i] = r
             return r
-        except Exception as e: raise Exception(e) from e
-        finally:                
-            for k in ("LOCAL_RANK", "LOCAL_WORLD_SIZE"): os.environ.pop(k) 
+        finally: map(lambda k: os.environ.pop(k, None), ("LOCAL_RANK", "LOCAL_WORLD_SIZE"))               
     return _cfn
 
 def ranch(nprocs:int, fn:Callable, *args, caller_rank:int=0, gather:bool=True, ctx=None, **kwargs):
@@ -62,35 +59,32 @@ def ranch(nprocs:int, fn:Callable, *args, caller_rank:int=0, gather:bool=True, c
             p.start()
 
         p_res = (_contextualize(caller_rank, nprocs, fn, ctx, result_list))(*args, **kwargs) if caller_rank is not None else None
-
         return result_list if gather else p_res
-
-    except Exception as e:
-        raise Exception(e) from e
-    finally:
-        for p in procs: p.join()
+    finally: map(lambda p: p.join(), procs)
 
 class TorchDDPCtx(AbstractContextManager):
     "Setup/teardown Torch DDP when entering/exiting a `with` clause. os.environ[] must define 'LOCAL_RANK' prior to __enter__() "
     def __init__(self, *args, world_size:int=None, base_rank:int=0, use_gpu:bool=True,
                  addr:str="127.0.0.1", port:int=29500, num_threads:int=1, **kwargs):
-        assert world_size and (base_rank >= 0 and world_size > base_rank), ValueError(f"Invalid world_size {world_size} or base_rank {base_rank}. They must satisfy: world_size > base_rank >=0 ")
+        assert world_size and (base_rank >= 0 and world_size > base_rank), ValueError(f"Invalid world_size {world_size} or base_rank {base_rank}. Need to be: world_size > base_rank >=0 ")
         self._ws, self._base_rank = world_size, base_rank
         self._a, self._p, self._nt = addr, str(port), str(num_threads)
         self._use_gpu, self._myddp, self._backend = use_gpu, False, 'gloo' # default to CPU backend
 
     def __enter__(self):
-        local_rank = int(os.environ.get('LOCAL_RANK', -1))
-        assert local_rank >= 0, ValueError(f"os.environ['LOCAL_RANK'] must be set prior to entering the context.")
+        try: local_rank, local_ws = int(os.environ['LOCAL_RANK']), int(os.environ['LOCAL_WORLD_SIZE'])
+        except KeyError as e: raise KeyError(f"os.environ['LOCAL_RANK'] and os.environ['LOCAL_RANK'] must be set prior to entering the context.") from e
+
+        assert 0 < local_ws <= self._ws, ValueError(f"Invalid os.environ['LOCAL_WORLD_SIZE']: {local_ws}, should be 0 < ws <= {self._ws}!")
+
         rank = local_rank + self._base_rank
-        assert rank < self._ws, ValueError(f"local_rank ({local_rank}) + base_rank ({self._base_rank}) must be < world_size ({self._ws})")
+        assert rank < self._ws, ValueError(f"local_rank {local_rank} + base_rank {self._base_rank}, should be < ({self._ws})")
 
         if self._use_gpu and torch.cuda.is_available():
-            if local_rank >= torch.cuda.device_count():
-                print(f"Rank [{rank}] LOCAL_RANK {local_rank}: not enough of CUDA device {torch.cuda.device_count()}, using CPU ", file=sys.stderr, flush=True)
-            else:
-                torch.cuda.set_device(local_rank)
-                print(f"Rank [{rank}] using CUDA GPU {local_rank}")
+            try: torch.cuda.set_device(local_rank)
+            except RuntimeError as e: self._use_gpu = False
+            print(f"Rank [{rank}] using CUDA GPU {local_rank}" if self._use_gpu else f"Failed to set CUDA device to {local_rank}. Invalid os.environ['LOCAL_RANK']?", file=sys.stderr, flush=True)
+
         self._backend = 'nccl'
         os.environ.update({"WORLD_SIZE":str(self._ws), "RANK":str(rank),
             "MASTER_ADDR":self._a, "MASTER_PORT":self._p, "OMP_NUM_THREADS":self._nt})
