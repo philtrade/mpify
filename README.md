@@ -1,10 +1,11 @@
 ## Overview 
 
-**`mpify`** is a simple API to launch a "target function" parallelly to multiple *ranked* processes via a single blocking call, with the following features:
-   * **caller process may participate** as a ranked worker and receive the return object from taret function,
-   * sub-processes will exit upon function return, thus **freeing up resources (e.g. Multiple GPU contexts)**,
-   * when used in Jupyter notebook/IPython, **locally defined functions and objects can be passed to the target function in subprocesses**,
-   * provide a mechanism to **support starred import ("`from X import *`") within the target function**, and
+**`mpify`** is a simple API to launch a "target function" parallelly on a group of *ranked* processes via a single blocking call, with the following features:
+   * **Caller process can participate** as a ranked worker (by default as local rank 0)
+   * **Return values from all workers** can be gathered in a list, or only that from the caller process (if it participates).
+   * **One-use semantic**: sub-processes are terminated upon function completion, thus freeing up resources (e.g. Multiple GPU contexts)
+   * **Jupyter/IPython-friendly**, locally defined functions and objects are accessible in the subprocesses via the *target function parameters*
+   * **A mechanism for ("`from X import *`") within a function**, and
    * user can **use context manager to manage resources around the execution** of the target function.
 
 `mpify` hopes to make multiprocess experiments in Jupyter notebook a little easier (although it works in batch script as well.):
@@ -23,53 +24,76 @@ To this:
 
 ## API and Usage Guide
 
-#### <b>import_star</b>(<i>module_list:[str]</i>)
+#### 1. <b>import_star</b>(<i>module_list:[str]</i>)
 
   When inside a function, '`from X import *`' is syntactically disallowed by Python. Use `import_star(['X',...])` to get around such limitation.
 
 
-####  <b>ranch</b>(<i>nprocs:int, fn:Callable, *args, caller_rank:int=0, catchall:bool=True, host_rank:int=0, ctx=None, **kwargs</i>)
+####  2. <b>ranch</b>(<i>nprocs:int, fn:Callable, *args, caller_rank:int=0, gather:bool=True, ctx=None, **kwargs</i>)
 
-  Launch a group of ranked process (0..`nprocs-1` inclusive) to execute target function `fn(*args, **kwargs)` in parallel.
+  Launch `nprocs` ranked process to execute target function `fn(*args, **kwargs)` in parallel.  Local ranks are from 0 to `nprocs`-1.
 
-  A few generic distributed attributes will be available to `fn()`. *Local rank*, *global rank*, *world size* as defined in PyTorch's [distributed data parallel convention](https://discuss.pytorch.org/t/what-is-the-difference-between-rank-and-local-rank/61940), are stored in `os.environ['LOCAL_RANK, RANK, and WORLD_SIZE']`, as strings .
+  Upon entering the target function `fn`, `nprocs` is available in `os.environ['LOCAL_WORLD_SIZE']`, and the local rank (`0 <= local rank <= nprocs`) in `os.environ['LOCAL_RANK']`, both as strings not integers.
 
   *Returns*: a list of return values from each process, or that from the caller process.  See `catchall` and `caller_rank` below. 
   
   <i>`nprocs:`</i>Number of worker processes
 
-<i>`fn, *args, and **kwargs`</i>: Target function and its calling parameters.
+  <i>`fn, *args, and **kwargs`</i>: Target function and its calling parameters.
 
-<i>`caller_rank`</i>: `None`, if the caller does not participate in the worker group, or a *rank* between 0 and `nprocs-1` (inclusive), if the caller process will participate and run the target function as well.  Default to `0`, i.e. the caller process will be the *rank 0* process in the process group.
+  <i>`caller_rank`</i> determines whether the caller process participates in the worker group or not.  To participate, specify an integer between 0..`nprocs`-1 as its local rank; otherwise use `None`. Default to `0`, i.e. caller participates as local rank `0`.
 
-<i>`catchall:bool`</i>: Determines the return value of the call.  If True, `ranch()` will gather and return the *return values from all processes* in a list.  If `False`, and if `caller_rank` is defined, return the value of the `caller_rank` execution of the target function.  Otherwise `ranch()` will return `None`.
+  <i>`gather:bool`</i>: If `True`, *return values from `fn(*args, **kwargs)` in all worker process* will be returned in a list of `nprocs` items, indexed by each process' rank.  If `False`, and if caller participates, will return *its* target function's return value (1 item).  Otherwise return `None`.
 
-<i>`ctx`</i>: A context manager which wraps the execution of the target function.  Each process' execution flow would look like:
+  <i>`ctx`</i>: A context manager to wrap around the execution of the target function.  Each process' execution flow would look like:
 
-<i>spawn -> [`ctx.__enter__()`]-> run function -> [`ctx.__exit__()`] -> terminate</i>
+  <i>spawn -> [`ctx.__enter__()`]-> run function -> [`ctx.__exit__()`] -> terminate</i>
 
-When combined with custom context manager, user can set up execution envrionment, acquire and manage resources at entry/exit.
+  `ctx` is useful to set up execution environment, acquire and manage resources around the execution.
 
-For example, to set up a distributed data parallel process group for distributed training of PyTorch models, one may use the provided  context manager <b>TorchDDPCtx</b>, or more conveniently, use **`in_torchddp()`** which is a wrapper to `ranch()` and it uses `TorchDDPCtx`:
+  For example, <b>mpify.TorchDDPCtx</b> is a context manager to set up the PyTorch `Distributed Data-Parallel` process group, for distributed training of PyTorch model.
 
-#### <b>in_torchddp</b>(<i>nprocs:int, fn:Callable, *args, ctx:TorchDDPCtx=None, **kwargs</i>):
+A convenient helper  **`in_torchddp()`** constructs a `TorchDDPCtx` then calls `ranch()` with it.  See below.
 
-  Launch `fn` to an initialized torch distributed data parallel (DDP) group with `nprocs` processes, and the caller process itself would be `rank-0`.
+#### 3. <b>in_torchddp</b>(<i>nprocs:int, fn:Callable, *args, ctx:TorchDDPCtx=None, world_size:int=None, base_rank:int=0, **kwargs</i>):
+  
+  Initialized/join a PyTorch DDP group of `world_size` members, and launch `fn(*args, **kwargs)` in `nprocs` member processes, starting at global rank `base_rank`.
 
-  *ctx*: use a custom TorchDDPCtx object.  Otherwise a default `TorchDDPCtx()` instance will be used.
+  `nprocs` - number of worker processes to spawn on this node/host.
+
+  `world_size` - the group size, is stored in `os.environ['WORLD_SIZE']`.  Default to `nprocs`
+
+  `base_rank` - the starting global rank number of the first process in this node/host.  Each process' own global rank is stored in `os.environ['RANK']` before function begins execution.
+
+
+  `ctx`: custom TorchDDPCtx object.  Otherwise a default `TorchDDPCtx()` instance will be used.
     
   *Returns:* only the `rank-0` execution result.  The initialized DDP group will be destroyed.
 
+#### 4. <b>TorchDDPCtx(world_size:int=None, base_rank:int=0, use_gpu:bool=True, addr:str="127.0.0.1", port:int=29500, num_threads:int=1, **kwargs)</b>
 
-> The following `in_torchddp(...)` and `ranch(...)` calls are equivalent:
+A context manager to set-up/tear-down PyTorch's distributed data parallel environment.  `world_size` is the group size of the entire DDP group (which can cover multiple nodes).  `base_rank` is the global rank number of the first participating process on this node.
+
+Before entering the context, user of this manager must set the total number of participating processes on this node in `os.environ['LOCAL_WORLD_SIZE']`, and the *cardinality of current process* (from `0` to 'local world size' - `1`) in `os.environ['LOCAL_RANK']`.  Note that both must be strings, not integers, as everything in `os.environ`.
+
+**TorchDDPCtx** will then set up the appropriate environment variables for PyTorch's DDP execution: `WORLD_SIZE`, `RANK` (the global rank w.r.t. the entire DDP group), `MASTER_ADDR`, `MASTER_PORT` etc..
+
+
+`use_gpu`: if `True`, will attempt to set up `torch.cuda` to use CUDA GPU `i` for `LOCAL_RANK` `i`, upon entering the context.
+
+
 
 ```python
 from mpify import in_torchddp, ranch, TorchDDPCtx
 
-result = in_torchddp(world_size, create_and_train_model)
+nprocs = 3
 
-# the same t'ing
-result = ranch(world_size, create_and_train_model, caller_rank=0, catchall=False, ctx=TorchDDPCtx())
+# Using in_torchddp()
+result = in_torchddp(nprocs, create_and_train_model)
+
+# The same t'ing, using ranch()
+ctx = TorchDDPCtx(world_size=nprocs, base_rank=0)
+result = ranch(nprocs, create_and_train_model, caller_rank=0, gather=False, ctx=ctx)
  ```
 
 -----
