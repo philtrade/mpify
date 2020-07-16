@@ -9,7 +9,7 @@ TODO: if in IPython, user defined local functions can be obtained, thus exportab
 
     Can imported modules lines be discovered and sent over as well?
 '''
-__all__ = ['import_star', 'ranch', 'TorchDDPCtx', 'in_torchddp']
+__all__ = ['import_star', 'ranch', 'TorchDDPCtx', 'in_torchddp', 'ddp_rank', 'ddp_worldsize']
 
 def import_star(modules=[]):
     "Apply `from module import '*'` into caller's frame from a list of modules."
@@ -81,11 +81,12 @@ class TorchDDPCtx(AbstractContextManager):
         assert rank < self._ws, ValueError(f"local_rank {local_rank} + base_rank {self._base_rank}, should be < ({self._ws})")
 
         if self._use_gpu and torch.cuda.is_available():
-            try: torch.cuda.set_device(local_rank)
+            try:
+                torch.cuda.set_device(local_rank)
+                self._backend = 'nccl'
             except RuntimeError as e: self._use_gpu = False
             print(f"Rank [{rank}] using CUDA GPU {local_rank}" if self._use_gpu else f"Failed to set CUDA device to {local_rank}. Invalid os.environ['LOCAL_RANK']?", file=sys.stderr, flush=True)
 
-        self._backend = 'nccl'
         os.environ.update({"WORLD_SIZE":str(self._ws), "RANK":str(rank),
             "MASTER_ADDR":self._a, "MASTER_PORT":self._p, "OMP_NUM_THREADS":self._nt})
         if not torch.distributed.is_initialized():
@@ -98,6 +99,9 @@ class TorchDDPCtx(AbstractContextManager):
         if self._use_gpu and torch.cuda.is_available(): torch.cuda.empty_cache()
         for k in ["WORLD_SIZE", "RANK", "MASTER_ADDR", "MASTER_PORT", "OMP_NUM_THREADS"]: os.environ.pop(k, None)
         return exc_type is None
+
+def ddp_rank(): return int(os.environ['RANK'])
+def ddp_worldsize(): return int(os.environ['WORLD_SIZE'])
 
 def in_torchddp(nprocs:int, fn:Callable, *args, ctx:TorchDDPCtx=None, world_size:int=None, base_rank:int=0, **kwargs):
     "Launch `fn(*args, **kwargs)` in Torch DDP group of 'world_size' members on `nprocs` local processes RANK from ['base_rank'..'nprocs'-1]"
