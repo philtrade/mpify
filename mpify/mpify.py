@@ -8,13 +8,25 @@ TODO: if in IPython, user defined local functions can be obtained, thus exportab
         if type(f) == types.FunctionType and not k.startswith('_') and k == f.__name__ and f.__module__ == '__main__' ]
 
     Can imported modules lines be discovered and sent over as well?
+    - yes, if in IPython, examine shell.user_ns dict, for all "_i{n}", look for:
+      "from x import y" and "import x as y", build the list and pass to contextualize.
+
+    The following seems to work in the target function of Process():
+    import importlib
+
+    # import torch
+    globals()['torch'] = importlib.import_module('torch')
+
+    # import torch.distributed as dist
+    globals()['dist' ] = importlib.import_module('torch.distributed')
+
 '''
 __all__ = ['import_star', 'ranch', 'TorchDDPCtx', 'in_torchddp', 'ddp_rank', 'ddp_worldsize']
 
-def import_star(modules=[]):
+def import_star(modules:[str]=[], g:dict=None):
     "Apply `from module import '*'` into caller's frame from a list of modules."
     cf = inspect.currentframe()
-    g = cf.f_back.f_globals
+    if g is None: g = cf.f_back.f_globals
     try:
         for mod in modules:
             try:
@@ -32,6 +44,19 @@ def _contextualize(i:int, nprocs:int, fn:Callable, cm:AbstractContextManager, l=
     def _cfn(*args, **kwargs):
         os.environ.update({"LOCAL_RANK":str(i), "LOCAL_WORLD_SIZE":str(nprocs)})
         try:
+            '''
+            The following snippet import modules into function 'fn()''s globals scope.
+
+            import inspect, importlib
+            try: g_member = next(filter(lambda t: t[0] == '__globals__', inspect.getmembers(fn)))
+            except StopIteration: raise KeyError("Wow what kind of object is fn?! no '__globals__'? ")
+            m = __import__('torch')
+
+            # g_member[1] is the same as "globals()" inside "fn()"
+            g_member[1]['torch'] = m
+            import_star(['numpy'], g_member[1])
+            g_member[1]['dist' ] = importlib.import_module('torch.distributed') 
+            '''
             with cm or nullcontext(): r = fn(*args, **kwargs)
             if l: l[i] = r
             return r
@@ -49,6 +74,8 @@ def ranch(nprocs:int, fn:Callable, *args, caller_rank:int=0, gather:bool=True, c
         assert 0 <= caller_rank < nprocs, ValueError(f"Invalid caller_rank {caller_rank}, must satisfy 0 <= caller_rank < {nprocs}")
         children_ranks.pop(caller_rank)
 
+    print(f"Spawning ranks: [{children_ranks}]")
+
     multiproc_ctx, procs = mp.get_context("spawn"), []
     result_list = multiproc_ctx.Manager().list([None] * nprocs) if gather else None
     try: # First launch the execution in the subprocesses, then in current process if caller_rank is not None
@@ -57,10 +84,11 @@ def ranch(nprocs:int, fn:Callable, *args, caller_rank:int=0, gather:bool=True, c
             p = multiproc_ctx.Process(target=target_fn, args=args, kwargs=kwargs)
             procs.append(p)
             p.start()
-
         p_res = (_contextualize(caller_rank, nprocs, fn, ctx, result_list))(*args, **kwargs) if caller_rank is not None else None
+        for p in procs: p.join()
         return result_list if gather else p_res
-    finally: map(lambda p: p.join(), procs)
+    finally: 
+        for p in procs: p.terminate(), p.join()
 
 class TorchDDPCtx(AbstractContextManager):
     "Setup/teardown Torch DDP when entering/exiting a `with` clause. os.environ[] must define 'LOCAL_RANK' prior to __enter__() "
