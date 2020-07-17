@@ -151,9 +151,9 @@ class TorchDDPCtx(AbstractContextManager):
 def ddp_rank(): return int(os.environ['RANK'])
 def ddp_worldsize(): return int(os.environ['WORLD_SIZE'])
 
-def in_torchddp(nprocs:int, fn:Callable, *args, ctx:TorchDDPCtx=None, world_size:int=None, base_rank:int=0, **kwargs):
+def in_torchddp(nprocs:int, fn:Callable, *args, ctx:TorchDDPCtx=None, world_size:int=None, base_rank:int=0, need:str=None, **kwargs):
     "Launch `fn(*args, **kwargs)` in Torch DDP group of 'world_size' members on `nprocs` local processes RANK from ['base_rank'..'nprocs'-1]"
     if world_size is None: world_size = nprocs
     assert base_rank + nprocs <= world_size, ValueError(f"nprocs({nprocs}) + base_rank({base_rank}) must be < world_size({world_size})")
-    if ctx is None: ctx = TorchDDPCtx(world_size=world_size, base_rank=base_rank)
+    if ctx is None: ctx = TorchDDPCtx(world_size=world_size, base_rank=base_rank, need=need)
     return ranch(nprocs, fn, *args, caller_rank=0, gather=False, ctx=ctx,  **kwargs)
