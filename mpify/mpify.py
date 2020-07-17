@@ -38,7 +38,7 @@ def import_star(modules:[str]=[], g:dict=None):
             except Exception as e: raise ImportError(f"Failed to import module {mod}") from e
     finally: del cf   # per https://docs.python.org/3/library/inspect.html#the-interpreter-stack
 
-def _contextualize(i:int, nprocs:int, fn:Callable, cm:AbstractContextManager, l=None):
+def _contextualize(i:int, nprocs:int, fn:Callable, cm:AbstractContextManager, l=None, env:dict={}):
     "Return a function that will setup os.environ and execute a target function within a context manager."
     if l: assert i < len(l), ValueError("Invalid index {i} > result list size: {len(l)}")
     def _cfn(*args, **kwargs):
@@ -55,15 +55,27 @@ def _contextualize(i:int, nprocs:int, fn:Callable, cm:AbstractContextManager, l=
             # g_member[1] is the same as "globals()" inside "fn()"
             g_member[1]['torch'] = m
             import_star(['numpy'], g_member[1])
-            g_member[1]['dist' ] = importlib.import_module('torch.distributed') 
+            g_member[1]['dist' ] = importlib.import_module('torch.distributed')
+
+            for o in objlist: g_member[1][o] = outside[o]
             '''
+            import inspect, importlib
+            try: g_member = next(filter(lambda t: t[0] == '__globals__', inspect.getmembers(fn)))
+            except StopIteration: raise KeyError("Wow what kind of object is fn?! no '__globals__'? ")
+            # m = __import__('torch')
+            # g_member[1] is the same as "globals()" inside "fn()"
+            # g_member[1]['torch'] = m
+            # import_star(['numpy'], g_member[1])
+
+            for k,v in env.items(): g_member[1][k] = v # pass in explicit objects
+
             with cm or nullcontext(): r = fn(*args, **kwargs)
             if l: l[i] = r
             return r
         finally: map(lambda k: os.environ.pop(k, None), ("LOCAL_RANK", "LOCAL_WORLD_SIZE"))               
     return _cfn
 
-def ranch(nprocs:int, fn:Callable, *args, caller_rank:int=0, gather:bool=True, ctx=None, **kwargs):
+def ranch(nprocs:int, fn:Callable, *args, caller_rank:int=0, gather:bool=True, ctx=None, need:str=None, **kwargs):
     '''Spawn `nprocs` ranked process and launch `fn(*args, **kwargs)`. Caller process can participate as `caller_rank`.
     Apply ctx mgr if provided. `gather`: If True (default), return list of all function return values; otherwise return that executed in the parent rank process, and that requires `caller_rank` be defined.
     '''
@@ -79,15 +91,23 @@ def ranch(nprocs:int, fn:Callable, *args, caller_rank:int=0, gather:bool=True, c
     multiproc_ctx, procs = mp.get_context("spawn"), []
     result_list = multiproc_ctx.Manager().list([None] * nprocs) if gather else None
     try: # First launch the execution in the subprocesses, then in current process if caller_rank is not None
+        env = {}
+        if need is not None:
+            cf = inspect.currentframe()
+            caller_g = cf.f_back.f_globals
+            objs = need.split()
+            for o in objs: env[o] = caller_g[o]
+            del cf
+
         for rank in children_ranks:
-            target_fn = _contextualize(rank, nprocs, fn, ctx, result_list)
+            target_fn = _contextualize(rank, nprocs, fn, cm=ctx, l=result_list, env=env)
             p = multiproc_ctx.Process(target=target_fn, args=args, kwargs=kwargs)
             procs.append(p)
             p.start()
-        p_res = (_contextualize(caller_rank, nprocs, fn, ctx, result_list))(*args, **kwargs) if caller_rank is not None else None
+        p_res = (_contextualize(caller_rank, nprocs, fn, cm=ctx, l=result_list))(*args, **kwargs) if caller_rank is not None else None
         for p in procs: p.join()
         return result_list if gather else p_res
-    finally: 
+    finally:
         for p in procs: p.terminate(), p.join()
 
 class TorchDDPCtx(AbstractContextManager):
