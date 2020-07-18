@@ -5,7 +5,7 @@ import torch
 '''
 TODO:
 '''
-__all__ = ['import_star', 'global_imports', 'ranch', 'TorchDDPCtx', 'in_torchddp', 'DistAttr', 'ddp_rank', 'ddp_worldsize']
+__all__ = ['import_star', 'global_imports', 'ranch', 'TorchDDPCtx', 'in_torchddp', 'ddp_rank', 'ddp_worldsize']
 
 #  - globals() doesn't necessarily return the '__main__' global scope when inside package function,
 #    thus we use sys.modules['__main__'].__dict__.
@@ -46,16 +46,11 @@ def _contextualize(i:int, nprocs:int, fn:Callable, cm:AbstractContextManager, l=
         os.environ.update({"LOCAL_RANK":str(i), "LOCAL_WORLD_SIZE":str(nprocs)})
         try:
             import sys
-            from mpify import global_imports, DistAttr
+            from mpify import global_imports
             # import things into the '__main__', which can be in a subprocess here.
             g = sys.modules['__main__'].__dict__
             global_imports(imports.split('\n'), g)
             g.update(env)
-            args = list(args)
-            for idx, a in enumerate(args):
-                if a in DistAttr: args[idx] = DistAttr.convert(a)
-            for k, a in kwargs.items():
-                if a in DistAttr: kwargs[k] = DistAttr.convert(a)
             with cm or nullcontext(): r = fn(*args, **kwargs)
             if l: l[i] = r
             return r
@@ -130,15 +125,6 @@ class TorchDDPCtx(AbstractContextManager):
         if self._use_gpu and torch.cuda.is_available(): torch.cuda.empty_cache()
         for k in ["WORLD_SIZE", "RANK", "MASTER_ADDR", "MASTER_PORT", "OMP_NUM_THREADS"]: os.environ.pop(k, None)
         return exc_type is None
-
-from enum import Enum
-class DistAttr(Enum):
-    LOCAL_RANK=f"_MPIFY.LOCAL_RANK"
-    LOCAL_WORLD_SIZE=f"_MPIFY.LOCAL_WORLD_SIZE"
-    RANK=f"_MPIFY.RANK"
-    WORLD_SIZE=f"_MPIFY.WORLD_SIZE"
-    @staticmethod
-    def convert(attr:DistAttr): return int(os.environ[(attr.value.split('.', 2))[1]])
 
 def ddp_rank(): return int(os.environ['RANK'])
 def ddp_worldsize(): return int(os.environ['WORLD_SIZE'])
