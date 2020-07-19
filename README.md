@@ -1,6 +1,6 @@
 ## Overview 
 
-**`mpify`** is a simple API to launch a "target function" parallelly on a group of *ranked* processes via a single blocking call, with the following features:
+**`mpify`** is a simple API to launch a "target function" parallelly on a group of *ranked* processes via a single blocking call.  It overcomes the few quirks when *multiple python processes* meets *interactive Jupyter/IPython* meets *multiple CUDA GPUs*, and has the following features:
    * **Caller process can participate** as a ranked worker (by default as local rank 0)
    * **Collect return values from any or all worker procs.**
    * **Worker procs will exit upon function completion**, freeing up resources (e.g. GPUs).
