@@ -21,21 +21,21 @@ To run an existing function on multiple spawned processes in Jupyter, user has t
 
 
 ### 1.  <b>ranch</b>(<i>nprocs:int, fn:Callable, *args, caller_rank:int=0, gather:bool=True, ctx:AbstractContextManager=None, imports:str=None, need:str="", **kwargs</i>)
-  > Launch `nprocs` ranked process to execute target function `fn(*args, **kwargs)` in parallel.  Each process will see its rank in `os.environ['LOCAL_RANK']`, and total number of processes `nprocs` in `os.environ['LOCAL_WORLD_SIZE']`, as strings not `int`, like all things in `os.environ`
+  > Launch `nprocs` ranked processes to execute target function `fn(*args, **kwargs)` in parallel.  Each process will see its rank in `os.environ['LOCAL_RANK']`, and total number of processes `nprocs` in `os.environ['LOCAL_WORLD_SIZE']`, as strings not `int`, like all things in `os.environ`.
   > 
   > *Returns*: a list of return values from each process, or that from the caller process.  See the documentation on `caller_rank` and `gather` below.
   
-  ***`nprocs`***: Number of worker processes
+  ***`nprocs`***: Number of local worker processes.
 
   ***`fn, *args, and **kwargs`***: Target function and its calling parameters, i.e. original target function usage is `fn(*args, **kwargs)` in single process.
 
-  <i>**`imports:str`**</i>: Multi-line `import` statements, to import modules that the target function needs, in the subprocess.  e.g.:
+  <i>**`imports:str`**</i>: Multi-line `import` statements, to import modules that the target function needs, in the subprocess.
   
-  <i>**`need:str`**</i>: Names of locally defined objects/functions in a string, space-separated.  E.g.
+  <i>**`need:str`**</i>: Names of locally defined objects/functions in a string, space-separated.
   
-  ***`caller_rank:int`*** If it is not None and is an integer between 0..`nprocs`-1, the caller process will participate as a worker in the group at this rank value. If `None`, caller doesn't participate.  Default to `0`, i.e. caller participates as local rank `0`.
+  ***`caller_rank:int`*** If it is an integer between 0..`nprocs`-1, the caller process will participate as a worker in the group at this rank value. If `None`, caller doesn't participate.  Default to `0`, i.e. caller participates as local rank `0`.
 
-  ***`gather:bool`***: If `True`, `ranch()` will return *a list of return values from `fn(*args, **kwargs)` from worker processes*, indexed by each process' local rank.  If `False`, and if 0 <= `caller_rank` < `nprocs-1` , will return the single output from caller's execution of the function, otherwise return `None` when `gather==False` and `caller_rank=None`.
+  ***`gather:bool`***: If `True`, `ranch()` will return **a list of** return values from `fn(*args, **kwargs)` from worker processes, indexed by each process' local rank.  If `False`, and if 0 <= `caller_rank` < `nprocs-1` , will return **the single output** from caller's execution of the function, otherwise return `None` when `gather==False` and `caller_rank=None`.
 
   ***`ctx:AbstractContextManager`***: When provided, the execution flow of each process becomes:
 
@@ -59,7 +59,7 @@ A convenient helper  **`in_torchddp()`** constructs a `mpify.TorchDDPCtx` contex
 
   ***`ctx`***: custom TorchDDPCtx object. Otherwise a default `TorchDDPCtx()` instance will be used.
     
-#### 3. <b>TorchDDPCtx(world_size:int=None, base_rank:int=0, use_gpu:bool=True, addr:str="127.0.0.1", port:int=29500, num_threads:int=1, **kwargs)</b>
+### 3. <b>TorchDDPCtx(world_size:int=None, base_rank:int=0, use_gpu:bool=True, addr:str="127.0.0.1", port:int=29500, num_threads:int=1, **kwargs)</b>
 
 > A context manager to set-up/tear-down PyTorch's distributed data-parallel group of  `world_size` processes, starting at `base_rank` on this node.
 > 
@@ -67,7 +67,7 @@ A convenient helper  **`in_torchddp()`** constructs a `mpify.TorchDDPCtx` contex
 > 
 > Once in context, PyTorch's DDP attributes: `WORLD_SIZE`, `RANK`, `MASTER_ADDR`, `MASTER_PORT` etc, will be available in `os.environ`.
 
-***`use_gpu`***: if `True`, will also try to set up `torch.cuda` to use CUDA GPU according to `LOCAL_RANK`.
+***`use_gpu`***: if `True`, `__enter__()` will also set up `torch.cuda` by calling `torch.cuda.set_device(int(os.environ['LOCAL_RANK']))`
 
 -----
 
