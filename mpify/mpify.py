@@ -2,9 +2,7 @@ import os, sys, re, inspect, multiprocess as mp
 from typing import Callable
 from contextlib import AbstractContextManager, nullcontext
 import torch
-'''
-TODO:
-'''
+
 __all__ = ['import_star', 'global_imports', 'ranch', 'TorchDDPCtx', 'in_torchddp', 'ddp_rank', 'ddp_worldsize']
 
 #  - globals() doesn't necessarily return the '__main__' global scope when inside package function,
@@ -47,7 +45,7 @@ def _contextualize(i:int, nprocs:int, fn:Callable, cm:AbstractContextManager, l=
         try:
             import sys
             from mpify import global_imports
-            # import things into the '__main__', which can be in a subprocess here.
+            # import env into '__main__', which can be in a subprocess here.
             g = sys.modules['__main__'].__dict__
             global_imports(imports.split('\n'), g)
             g.update(env)
@@ -73,7 +71,6 @@ def ranch(nprocs:int, fn:Callable, *args, caller_rank:int=0, gather:bool=True, c
     try:
         # pass globals in this process to subprocess via fn's wrapper, 'target_fn'
         env = {k : sys.modules['__main__'].__dict__[k] for k in need.split()}
-        print(f"Passing env to contextualize(): {env}")
         for rank in children_ranks:
             target_fn = _contextualize(rank, nprocs, fn, cm=ctx, l=result_list, env=env, imports=imports)
             p = multiproc_ctx.Process(target=target_fn, args=args, kwargs=kwargs)
@@ -92,26 +89,25 @@ class TorchDDPCtx(AbstractContextManager):
         assert world_size and (base_rank >= 0 and world_size > base_rank), ValueError(f"Invalid world_size {world_size} or base_rank {base_rank}. Need to be: world_size > base_rank >=0 ")
         self._ws, self._base_rank = world_size, base_rank
         self._a, self._p, self._nt = addr, str(port), str(num_threads)
-        self._use_gpu, self._myddp, self._backend = use_gpu, False, 'gloo' # default to CPU backend
+        self._use_gpu = use_gpu and torch.cuda.is_available()
+        self._myddp, self._backend = False, 'gloo' # default to CPU backend
 
     def __enter__(self):
         try: local_rank, local_ws = int(os.environ['LOCAL_RANK']), int(os.environ['LOCAL_WORLD_SIZE'])
-        except KeyError as e:
-            raise KeyError(f"os.environ['LOCAL_RANK'] and os.environ['LOCAL_RANK'] must be set when __enter__()ing.") from e
+        except KeyError: raise KeyError(f"'LOCAL_RANK' or 'LOCAL_RANK' not found in os.environ")
 
-        assert 0 < local_ws <= self._ws, ValueError(f"Invalid os.environ['LOCAL_WORLD_SIZE']: {local_ws}, should be 0 < ws <= {self._ws}!")
+        assert 0 < local_ws <= self._ws, ValueError(f"Invalid 'LOCAL_WORLD_SIZE': {local_ws}, should be 0 < ws <= {self._ws}!")
 
         rank = local_rank + self._base_rank
         assert rank < self._ws, ValueError(f"local_rank {local_rank} + base_rank {self._base_rank}, should be < ({self._ws})")
 
-        if self._use_gpu and torch.cuda.is_available():
+        if self._use_gpu:
+            assert local_rank<torch.cuda.device_count(), ValueError(f"LOCAL_RANK {local_rank} > available CUDA devices")
             try:
                 torch.cuda.set_device(local_rank)
                 self._backend = 'nccl'
                 print(f"Rank [{rank}] using CUDA GPU {local_rank}", flush=True)
-            except RuntimeError as e:
-                self._use_gpu = False
-                print(f"Failed to set CUDA device to {local_rank}. Invalid os.environ['LOCAL_RANK']?  Available device count: {torch.cuda.device_count()}", file=sys.stderr, flush=True)
+            except RuntimeError: self._use_gpu = False
 
         os.environ.update({"WORLD_SIZE":str(self._ws), "RANK":str(rank),
             "MASTER_ADDR":self._a, "MASTER_PORT":self._p, "OMP_NUM_THREADS":self._nt})
@@ -122,7 +118,7 @@ class TorchDDPCtx(AbstractContextManager):
 
     def __exit__(self, exc_type, exc_value, traceback):
         if self._myddp: torch.distributed.destroy_process_group()
-        if self._use_gpu and torch.cuda.is_available(): torch.cuda.empty_cache()
+        if self._use_gpu: torch.cuda.empty_cache()
         for k in ["WORLD_SIZE", "RANK", "MASTER_ADDR", "MASTER_PORT", "OMP_NUM_THREADS"]: os.environ.pop(k, None)
         return exc_type is None
 

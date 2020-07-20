@@ -6,8 +6,9 @@ import torch
 import torch.distributed as dist
 
 """
-    Applying mpify to the examples in PyTorch Distributed tutorial at
-    https://pytorch.org/tutorials/intermediate/dist_tuto.html
+    Applying mpify to the slightly modified examples in PyTorch Distributed tutorial at
+    https://pytorch.org/tutorials/intermediate/dist_tuto.html.  The tutorial only
+    handles a pair of processes.
 """
 
 """Blocking point-to-point communication."""
@@ -45,15 +46,17 @@ def run_nonblocking(rank, size):
 """ All-Reduce example."""
 def run_allreduce(rank, size):
     """ Simple point-to-point communication. """
-    group = dist.new_group([0, 1])
     tensor = torch.ones(1)
-    dist.all_reduce(tensor, op=dist.ReduceOp.SUM, group=group)
-    print('AllReduce: Rank ', rank, ' has data ', tensor[0])
+    dist.all_reduce(tensor, op=dist.ReduceOp.SUM)
+    print('AllReduce: Rank ', rank, ' has data ', tensor[0], flush=True)
 
-def runner(fn):
-    return fn(ddp_rank(), ddp_worldsize())
+def rank_size_wrapper(fn):
+    def new_fn(*args, **kwargs):
+        import os
+        return fn(int(os.environ.get('RANK')), int(os.environ.get('WORLD_SIZE')), *args, **kwargs)
+    return new_fn
 
 if __name__ == "__main__":
     size = torch.cuda.device_count() if torch.cuda.is_available() else 5
     "Pick one of run_blocking, run_nonblocking, and run_allreduce"
-    in_torchddp(size, runner, run_blocking)
+    in_torchddp(size, rank_size_wrapper(run_nonblocking))
