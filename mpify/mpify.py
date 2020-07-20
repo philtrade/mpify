@@ -3,38 +3,36 @@ from typing import Callable
 from contextlib import AbstractContextManager, nullcontext
 import torch
 
-__all__ = ['import_star', 'global_imports', 'ranch', 'TorchDDPCtx', 'in_torchddp', 'ddp_rank', 'ddp_worldsize']
+__all__ = ['import_star', 'global_imports', 'ranch', 'TorchDDPCtx', 'in_torchddp']
 
 #  - globals() doesn't necessarily return the '__main__' global scope when inside package function,
 #    thus we use sys.modules['__main__'].__dict__.
-#  - to access caller's globals, see https://docs.python.org/3/library/inspect.html#the-interpreter-stack
 
 def import_star(modules:[str], g:dict=None):
+    "Import * from the list of modules into a given namespace 'g'.  By default into '__main__'."
+    #  - to access caller's globals, see https://docs.python.org/3/library/inspect.html#the-interpreter-stack
     if g is None: import sys
     global_imports([f"from {m} import *" for m in modules], g or sys.modules['__main__'].__dict__)
 
 def global_imports(imports:[str], globals:dict):
-    '''
-    Parse each import instruction in 'imports', and import each item using __import__(x, fromlist=[non-empty]).
-    fromlist=[''], the non-empty list, means 'import X.Y' will return leaf module Y instead of top module X.
-    '''
+    '''Parse and execute the multi-line import statements, and import the names into 'globals' namespace.'''
     pat = re.compile(r'^\s*?(?:from\s+?(\S+?)\s+?)?import\s+?(.+)$')
     pat_as = re.compile(r'^\s*?(\S+?)(?:\s*?as\s+?(\S+?))?\s*$')
     for parsed in filter(lambda p:p,[pat.match(i) for i in imports]):
         (from_, imp_)  = parsed.groups()
         imps = imp_.split(',')
 
-        # If the import is "from X import <spec>", all specs will be from from_mod
+        # Parse "from X import ..."
         from_mod = __import__(from_, fromlist=['']) if from_ else None
 
         for name in imps: # each comma-separated item in import a, b, x as y
             (x, y) = pat_as.match(name).groups()
             if y is None: y=x
-            if x == '*': # starred import needs 'from'
-                assert from_, SyntaxError(f"Missing 'from <module> before 'import *': {parsed.string}")
+            if x == '*': # Handle starred import: 'from X import *'
+                assert from_, SyntaxError(f"From what <module> are you trying to 'import *': {parsed.string}")
                 importables = getattr(from_mod, "__all__", [n for n in dir(from_mod) if not n.startswith('_')])
                 for o in importables: globals[o] = getattr(from_mod, o)
-            else: # If the line doesn't begin with 'from', each 'x' is a new module to import.
+            else: # x is either a name in 1 module, OR a module itself
                 globals[y] = getattr(from_mod, x) if from_ else __import__(x, fromlist=[''])
 
 def _contextualize(i:int, nprocs:int, fn:Callable, cm:AbstractContextManager, l=None, env:dict={}, imports=""):
@@ -121,9 +119,6 @@ class TorchDDPCtx(AbstractContextManager):
         if self._use_gpu: torch.cuda.empty_cache()
         for k in ["WORLD_SIZE", "RANK", "MASTER_ADDR", "MASTER_PORT", "OMP_NUM_THREADS"]: os.environ.pop(k, None)
         return exc_type is None
-
-def ddp_rank(): return int(os.environ['RANK'])
-def ddp_worldsize(): return int(os.environ['WORLD_SIZE'])
 
 def in_torchddp(nprocs:int, fn:Callable, *args, world_size:int=None, base_rank:int=0,
                 ctx:TorchDDPCtx=None, need:str="", imports:str="", **kwargs):
