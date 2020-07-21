@@ -12,12 +12,14 @@
 
 `mpify` hopes to make multiprocessing tasks in Jupyter notebook easier.  It works outside of Jupyter as well.
 
-### Example: Porting the first training loop in Fastai2's course-v4 chapter 01_intro notebook
+### Example: Porting the first training loop in Fastai2's course-v4 chapter 01_intro notebook to train on 3 GPUs in Torch's DDP mode:
 
-The original code that runs on a single process Jupyter shell:
-<img src="/images/01_intro_train_cnn_orig.png" height="450">
+Original:
 
-to training distributedly on 3 GPUs:
+<img src="/images/01_intro_train_cnn_orig.png" height="350">
+
+`mpify`-ed:
+
 <img src="/images/01_intro_train_cnn_mpify.png" height="450">
 
 ## More Examples
