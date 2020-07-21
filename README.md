@@ -23,7 +23,11 @@ Original:
 <img src="/images/01_intro_train_cnn_mpify.png" height="450">
 
 ## More Examples
-The [examples/](/examples) directory contains a simple PyTorch use case, and examples from several `fastai2 course-v4` notebooks, `mpify`-ed, to train in PyTorch DDP.  If you find it useful and would like to add interesting use cases or bug fixes, feel free to submit a PR.
+The [examples/](/examples) directory contains:
+  * A PyTorch tutorial on DDP, ported to use `mpify` both in Jupyter, or as a standalone script.
+  * Several `fastai2 course-v4` notebooks ported to use `mpify`, and to train in distributed data-parallel.
+
+Interesting use cases you wish to share, and bug reports are welcome.
 
 ## API and Usage Guide
 
