@@ -7,7 +7,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="mpify-philtrade",
-    version="0.1.1",
+    version="0.1.0",
     author='Phillip K.S. Chu',
     author_email='philtrade@winphil.net',
     url='https://github.com/philtrade/mpify',
