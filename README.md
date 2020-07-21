@@ -7,20 +7,21 @@
    * **Multi-GPUs friendly**, since subprocesses are spawned not forked, thus immune from any existing CUDA state in caller.
    * **Jupyter-friendly**: modules to import, locally defined functions/objects can be passed to spawned subprocesses, thanks to the `multiprocess` module, a fork of the standard Python `multiprocessing`.
    * **Customizable execution environment around function call** via user defined context manager, and
-   * **Minimal changes, if any at all, to existing function**,
+   * **Minimal changes (sometimes none) to existing function**,
    * **A helper routine to "`from X import *`" within a Python function**.
 
-`mpify` hopes to make multiprocessing tasks in Jupyter notebook easier.  It works outside of Jupyter as well, check out the *`examples/`* subdir.
+`mpify` hopes to make multiprocessing tasks in Jupyter notebook easier.  It works outside of Jupyter as well.
 
+The [examples/](/examples) directory contains a simple PyTorch use case, and examples from several `fastai2 course-v4` notebooks, `mpify`-ed, to train in PyTorch DDP.  If you find it useful and would like to add interesting use cases or bug fixes, feel free to submit a PR.
 
 ## API and Usage Guide
 
-To run an existing function on multiple spawned processes in Jupyter, user has to 1. import all necessary modules in the spawned processes, and 2. pass any locally defined functions and objects to them as well.
+To run an existing function on multiple spawned processes in Jupyter, user has to import all necessary modules in the spawned processes, and pass any locally defined functions and objects to them.  It's often necessary to acquire resources, set up environment anew in each subprocess.  Finally the Jupyter caller shell might want to collect the function results for further manipulation in the shell (i.e. not in the subprocesses).
 
-`mpify` provides `ranch()` (ranked launch) to address these two issues, via the `imports:str` and `need:str` parameters.
+`mpify` provides `ranch()` ("ranked launch"), a sample context manager `TorchDDPCtx`, and `in_torchddp()` to address these issues.
 
 
-### 1.  <b>ranch</b>(<i>nprocs:int, fn:Callable, *args, caller_rank:int=0, gather:bool=True, ctx:AbstractContextManager=None, imports:str=None, need:str="", **kwargs</i>)
+#### 1.  <b>ranch</b>(<i>nprocs:int, fn:Callable, *args, caller_rank:int=0, gather:bool=True, ctx:AbstractContextManager=None, imports:str=None, need:str="", **kwargs</i>)
   > Launch `nprocs` ranked processes to execute target function `fn(*args, **kwargs)` in parallel.  Each process will see its rank in `os.environ['LOCAL_RANK']`, and total number of processes `nprocs` in `os.environ['LOCAL_WORLD_SIZE']`, as strings not `int`, like all things in `os.environ`.
   > 
   > *Returns*: a list of return values from each process, or that from the caller process.  See the documentation on `caller_rank` and `gather` below.
@@ -43,7 +44,7 @@ To run an existing function on multiple spawned processes in Jupyter, user has t
 
 A convenient helper  **`in_torchddp()`** constructs a `mpify.TorchDDPCtx` context manager then calls `ranch()` with it.  See below.
 
-### 2. <b>in_torchddp</b>(<i>nprocs:int, fn:Callable, *args, ctx:TorchDDPCtx=None, world_size:int=None, base_rank:int=0, **kwargs</i>):
+#### 2. <b>in_torchddp</b>(<i>nprocs:int, fn:Callable, *args, ctx:TorchDDPCtx=None, world_size:int=None, base_rank:int=0, **kwargs</i>):
   
   > Initialized/join a PyTorch DDP group of `world_size` members, and launch `fn(*args, **kwargs)` in `nprocs` member processes, starting at global rank `base_rank`.  The DDP group will be destroyed upon exit.
   > 
@@ -59,7 +60,7 @@ A convenient helper  **`in_torchddp()`** constructs a `mpify.TorchDDPCtx` contex
 
   ***`ctx`***: custom TorchDDPCtx object. Otherwise a default `TorchDDPCtx()` instance will be used.
     
-### 3. <b>TorchDDPCtx(world_size:int=None, base_rank:int=0, use_gpu:bool=True, addr:str="127.0.0.1", port:int=29500, num_threads:int=1, **kwargs)</b>
+#### 3. <b>TorchDDPCtx(world_size:int=None, base_rank:int=0, use_gpu:bool=True, addr:str="127.0.0.1", port:int=29500, num_threads:int=1, **kwargs)</b>
 
 > A context manager to set-up/tear-down PyTorch's distributed data-parallel group of  `world_size` processes, starting at `base_rank` on this node.
 > 
@@ -70,9 +71,6 @@ A convenient helper  **`in_torchddp()`** constructs a `mpify.TorchDDPCtx` contex
 ***`use_gpu`***: if `True`, `__enter__()` will also set up `torch.cuda` by calling `torch.cuda.set_device(int(os.environ['LOCAL_RANK']))`
 
 -----
-
-More notebook examples will come along in the future.
-
 
 ## References:
 
