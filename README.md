@@ -12,8 +12,15 @@
 
 `mpify` hopes to make multiprocessing tasks in Jupyter notebook easier.  It works outside of Jupyter as well.
 
-## Examples
+### Example: Porting the first training loop in Fastai2's course-v4 chapter 01_intro notebook
 
+The original code that runs on a single process Jupyter shell:
+<img src="/images/01_intro_train_cnn_orig.png" height="450">
+
+to training distributedly on 3 GPUs:
+<img src="/images/01_intro_train_cnn_mpify.png" height="450">
+
+## More Examples
 The [examples/](/examples) directory contains a simple PyTorch use case, and examples from several `fastai2 course-v4` notebooks, `mpify`-ed, to train in PyTorch DDP.  If you find it useful and would like to add interesting use cases or bug fixes, feel free to submit a PR.
 
 ## API and Usage Guide
@@ -62,7 +69,7 @@ A convenient helper  **`in_torchddp()`** constructs a `mpify.TorchDDPCtx` contex
 
   ***`ctx`***: custom TorchDDPCtx object. Otherwise a default `TorchDDPCtx()` instance will be used.
     
-#### 3. <b>TorchDDPCtx(world_size:int=None, base_rank:int=0, use_gpu:bool=True, addr:str="127.0.0.1", port:int=29500, num_threads:int=1, **kwargs)</b>
+#### 3. <b>TorchDDPCtx(<i>world_size:int=None, base_rank:int=0, use_gpu:bool=True, addr:str="127.0.0.1", port:int=29500, num_threads:int=1, **kwargs</i>)</b>
 
 > A context manager to set-up/tear-down PyTorch's distributed data-parallel group of  `world_size` processes, starting at `base_rank` on this node.
 > 
@@ -71,6 +78,10 @@ A convenient helper  **`in_torchddp()`** constructs a `mpify.TorchDDPCtx` contex
 > Once in context, PyTorch's DDP attributes: `WORLD_SIZE`, `RANK`, `MASTER_ADDR`, `MASTER_PORT` etc, will be available in `os.environ`.
 
 ***`use_gpu`***: if `True`, `__enter__()` will also set up `torch.cuda` by calling `torch.cuda.set_device(int(os.environ['LOCAL_RANK']))`
+
+#### 4. <b>import_star(<i>modules:[str], globals:dict=None</i>)</b>
+
+> Perform `from m import *` for the list of ***`modules`***.  By default, the names will be imported into the `__main__` module's global namespace, but user may provide its own target namespace via ***`globals`***.
 
 -----
 
