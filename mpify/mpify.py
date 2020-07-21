@@ -1,4 +1,4 @@
-import os, sys, re, inspect, multiprocess as mp
+import os, sys, re, multiprocess as mp
 from typing import Callable
 from contextlib import AbstractContextManager, nullcontext
 import torch
@@ -39,6 +39,7 @@ def _contextualize(i:int, nprocs:int, fn:Callable, cm:AbstractContextManager, l=
     "Return a function that will setup os.environ and execute a target function within a context manager."
     if l: assert i < len(l), ValueError("Invalid index {i} > result list size: {len(l)}")
     def _cfn(*args, **kwargs):
+        import os
         os.environ.update({"LOCAL_RANK":str(i), "LOCAL_WORLD_SIZE":str(nprocs)})
         try:
             import sys
@@ -85,12 +86,14 @@ class TorchDDPCtx(AbstractContextManager):
     def __init__(self, *args, world_size:int=None, base_rank:int=0, use_gpu:bool=True,
                  addr:str="127.0.0.1", port:int=29500, num_threads:int=1, **kwargs):
         assert world_size and (base_rank >= 0 and world_size > base_rank), ValueError(f"Invalid world_size {world_size} or base_rank {base_rank}. Need to be: world_size > base_rank >=0 ")
+
         self._ws, self._base_rank = world_size, base_rank
         self._a, self._p, self._nt = addr, str(port), str(num_threads)
         self._use_gpu = use_gpu and torch.cuda.is_available()
         self._myddp, self._backend = False, 'gloo' # default to CPU backend
 
     def __enter__(self):
+        import os
         try: local_rank, local_ws = int(os.environ['LOCAL_RANK']), int(os.environ['LOCAL_WORLD_SIZE'])
         except KeyError: raise KeyError(f"'LOCAL_RANK' or 'LOCAL_RANK' not found in os.environ")
 
@@ -105,7 +108,9 @@ class TorchDDPCtx(AbstractContextManager):
                 torch.cuda.set_device(local_rank)
                 self._backend = 'nccl'
                 print(f"Rank [{rank}] using CUDA GPU {local_rank}", flush=True)
-            except RuntimeError: self._use_gpu = False
+            except RuntimeError as e:
+                self._use_gpu = False;
+                print(f"Unable to set cuda device {local_rank}, using CPU. {e}", flush=True)
 
         os.environ.update({"WORLD_SIZE":str(self._ws), "RANK":str(rank),
             "MASTER_ADDR":self._a, "MASTER_PORT":self._p, "OMP_NUM_THREADS":self._nt})
