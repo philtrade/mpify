@@ -12,6 +12,8 @@
 
 `mpify` hopes to make multiprocessing tasks in Jupyter notebook easier.  It works outside of Jupyter as well.
 
+## Examples
+
 The [examples/](/examples) directory contains a simple PyTorch use case, and examples from several `fastai2 course-v4` notebooks, `mpify`-ed, to train in PyTorch DDP.  If you find it useful and would like to add interesting use cases or bug fixes, feel free to submit a PR.
 
 ## API and Usage Guide
