@@ -29,6 +29,13 @@ The [examples/](/examples) directory contains:
 
 Interesting use cases you wish to share, and bug reports are welcome.
 
+## Install
+
+**Latest Release is v0.1.0**: python3 -m pip install git+https://github.com/philtrade/mpify@v0.1.0
+
+**Latest Dev. version**: python3 -m pip install git+https://github.com/philtrade/mpify
+
+
 ## API and Usage Guide
 
 To run an existing function on multiple spawned processes in Jupyter, user has to import all necessary modules in the spawned processes, and pass any locally defined functions and objects to them.  It's often necessary to acquire resources, set up environment anew in each subprocess.  Finally the Jupyter caller shell might want to collect the function results for further manipulation in the shell (i.e. not in the subprocesses).
