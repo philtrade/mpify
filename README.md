@@ -1,16 +1,15 @@
 ## Overview 
 
-**`mpify`** is a simple API to launch a "target function" parallelly on a group of *ranked* processes via a single blocking call.  It overcomes the few quirks when *multiple python processes* meets *interactive Jupyter/IPython* meets *multiple CUDA GPUs*, and has the following features:
-   * **Caller process can participate** as a ranked worker (by default as local rank 0)
-   * **Collect return values from any or all worker procs.**
-   * **Worker procs will exit upon function completion**, freeing up resources (e.g. GPUs).
-   * **Multi-GPUs friendly**, since subprocesses are spawned not forked, thus immune from any existing CUDA state in caller.
-   * **Jupyter-friendly**: modules to import, locally defined functions/objects can be passed to spawned subprocesses, thanks to the `multiprocess` module, a fork of the standard Python `multiprocessing`.
-   * **Customizable execution environment around function call** via user defined context manager, and
-   * **Minimal changes (sometimes none) to existing function**,
-   * **A helper routine to "`from X import *`" within a Python function**.
+**`mpify`** is a thin library to run function on multiple processes.  It enables multi-GPU distributed training *inside a Jupyter notebook* by:
+  * allowing the Jupyter foreground process to participate as a worker and collect results
+  * making objects and functions defined in the Jupyter notebook accessible to subprocesses
 
-`mpify` hopes to make multiprocessing tasks in Jupyter notebook easier.  It works outside of Jupyter as well.
+The wrapper `mpify.ranch(n, fn, ...)` returns when `fn` completes in all processes, and accepts a context manager to be applied around `fn(...)`.  Each subprocess is `spawn`ed (not forked), and is pre-assigned a rank in `os.environ['LOCAL_RANK']`.
+
+With these, `mpify.in_torchddp(n, fn,...)` sets up/tears down a Torch DDP group for distributed training behind the scene.
+
+Although `mpify` works standalone Python app too, it is designed with single-node, multi-GPUs usage in mind.  For asynchronous, distributed workloads on multiple nodes (cluster), please use `ipyparallel`, `dask`, or `ray`, as they take care of scheduling, fault tolerance etc..
+
 
 ### Example: Porting the first training loop in Fastai2's course-v4 chapter 01_intro notebook to train on 3 GPUs in Torch's DDP mode:
 
