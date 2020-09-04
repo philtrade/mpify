@@ -1,0 +1,330 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>mpify package &mdash; mpify 0.1.0 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+    <link rel="canonical" href="https://mpify.readthedocs.iompify.html"/>
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="mpify" href="modules.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="index.html" class="icon icon-home" alt="Documentation Home"> mpify
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">API:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">mpify</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">mpify package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#module-mpify">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">mpify package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#module-mpify">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">mpify</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="modules.html">mpify</a> &raquo;</li>
+        
+      <li>mpify package</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/mpify.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="mpify-package">
+<h1>mpify package<a class="headerlink" href="#mpify-package" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="module-mpify">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-mpify" title="Permalink to this headline">¶</a></h2>
+<dl class="py class">
+<dt id="mpify.TorchDDPCtx">
+<em class="property">class </em><code class="sig-prename descclassname">mpify.</code><code class="sig-name descname">TorchDDPCtx</code><span class="sig-paren">(</span><em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="n">world_size</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">base_rank</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">use_gpu</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">addr</span><span class="o">=</span><span class="default_value">'127.0.0.1'</span></em>, <em class="sig-param"><span class="n">port</span><span class="o">=</span><span class="default_value">29500</span></em>, <em class="sig-param"><span class="n">num_threads</span><span class="o">=</span><span class="default_value">1</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mpify.html#TorchDDPCtx"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mpify.TorchDDPCtx" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/contextlib.html#contextlib.AbstractContextManager" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">contextlib.AbstractContextManager</span></code></a></p>
+<p>A context manager to set up and tear down a PyTorch distributed data parallel process group.
+os.environ[] must define ‘LOCAL_RANK’ prior to __enter__()</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mpify.global_imports">
+<code class="sig-prename descclassname">mpify.</code><code class="sig-name descname">global_imports</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">imports</span></em>, <em class="sig-param"><span class="n">ns</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mpify.html#global_imports"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mpify.global_imports" title="Permalink to this definition">¶</a></dt>
+<dd><p>Parse and execute multiple import statements, and import into target namespace ‘ns’</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>imports</strong> (<em>[</em><em>&lt;class 'str'&gt;</em><em>]</em>) – <p>list of import statements, as in Python code.  Supported formats include:
+* import x, y, z as z_alias</p>
+<ul>
+<li><p>from A import x</p></li>
+<li><p>from A import z as z_alias</p></li>
+<li><p>from A import x, y, z as z_alias</p></li>
+</ul>
+<p>Not supported: ‘from A import (a, b)’</p>
+</p></li>
+<li><p><strong>ns</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.8)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a>]) – target namespace to import into.  Default to ‘__main__’</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mpify.import_star">
+<code class="sig-prename descclassname">mpify.</code><code class="sig-name descname">import_star</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">modules</span></em>, <em class="sig-param"><span class="n">ns</span><span class="o">=</span><span class="default_value">None</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mpify.html#import_star"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mpify.import_star" title="Permalink to this definition">¶</a></dt>
+<dd><p>Import <code class="docutils literal notranslate"><span class="pre">*</span></code> from a list of module, into namespace ns (default to ‘__main__’)</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>modules</strong> (<em>[</em><em>&lt;class 'str'&gt;</em><em>]</em>) – list of modules or packages</p></li>
+<li><p><strong>ns</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.8)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">dict</span></code></a>]) – destination namespace, optional. If not provided, will default to ‘__main__’</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mpify.in_torchddp">
+<code class="sig-prename descclassname">mpify.</code><code class="sig-name descname">in_torchddp</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">nprocs</span></em>, <em class="sig-param"><span class="n">fn</span></em>, <em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="n">world_size</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">base_rank</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">ctx</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">need</span><span class="o">=</span><span class="default_value">''</span></em>, <em class="sig-param"><span class="n">imports</span><span class="o">=</span><span class="default_value">''</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mpify.html#in_torchddp"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mpify.in_torchddp" title="Permalink to this definition">¶</a></dt>
+<dd><p>Launch <cite>fn(*args, **kwargs)</cite> in a new PyTorch distributed data parallel process group.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>nprocs</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>) – Number of local processes to fork</p></li>
+<li><p><strong>fn</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.8)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Callable</span></code></a>) – the functions and its arguments</p></li>
+<li><p><strong>*args</strong> – the functions and its arguments</p></li>
+<li><p><strong>**kwargs</strong> – the functions and its arguments</p></li>
+<li><p><strong>world_size</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.8)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>]) – total number of members in the entire PyTorch DDP group</p></li>
+<li><p><strong>base_rank</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>) – the lowest, starting rank of in the local processes</p></li>
+<li><p><strong>ctx</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.8)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference internal" href="#mpify.TorchDDPCtx" title="mpify.TorchDDPCtx"><code class="xref py py-class docutils literal notranslate"><span class="pre">TorchDDPCtx</span></code></a>]) – by default will use <cite>mpify.TorchDDPCtx</cite> to set up torch distributed group,
+but user can override it with their own if necessary.</p></li>
+<li><p><strong>need</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>) – names of local objects to serialize over, comma-separated</p></li>
+<li><p><strong>imports</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>) – multi-line import statements, to apply in each forked process.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="mpify.ranch">
+<code class="sig-prename descclassname">mpify.</code><code class="sig-name descname">ranch</code><span class="sig-paren">(</span><em class="sig-param"><span class="n">nprocs</span></em>, <em class="sig-param"><span class="n">fn</span></em>, <em class="sig-param"><span class="o">*</span><span class="n">args</span></em>, <em class="sig-param"><span class="n">caller_rank</span><span class="o">=</span><span class="default_value">0</span></em>, <em class="sig-param"><span class="n">gather</span><span class="o">=</span><span class="default_value">True</span></em>, <em class="sig-param"><span class="n">ctx</span><span class="o">=</span><span class="default_value">None</span></em>, <em class="sig-param"><span class="n">need</span><span class="o">=</span><span class="default_value">''</span></em>, <em class="sig-param"><span class="n">imports</span><span class="o">=</span><span class="default_value">''</span></em>, <em class="sig-param"><span class="o">**</span><span class="n">kwargs</span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mpify.html#ranch"><span class="viewcode-link">[source]</span></a><a class="headerlink" href="#mpify.ranch" title="Permalink to this definition">¶</a></dt>
+<dd><p>Execute <cite>fn(*args, **kwargs)</cite> distributedly in <cite>nprocs</cite> processes.</p>
+<p>Inside each forked process, import statements are executed first, then objects/functions
+listed in <cite>need</cite> from the caller's namespace are made visible to the forked process's
+python global namespace (they are serialized by ‘ranch()’).
+Then, any user defined context manager is applied around the call ‘fn(*args, **kwargs)’.
+Return value of each call can be gathered in a list, indexed by the process’s rank,
+and returned to the caller of <cite>ranch()</cite>.</p>
+<p>Caller of <cite>ranch()</cite> can participate as one of the workers, if <cite>caller_rank</cite> is not None
+and <cite>0 &lt;= caller_rank &lt; nprocs</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>nprocs</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>) – Number of processes to fork.  Visible as a string in “os.environ[‘LOCAL_WORLD_SIZE’]”
+in all worker processes.</p></li>
+<li><p><strong>fn</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.8)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Callable</span></code></a>) – the function to execute on the worker pool</p></li>
+<li><p><strong>*args</strong> – the positional arguments by values to ‘fn(*args….)’</p></li>
+<li><p><strong>**kwargs</strong> – the named parameters to ‘fn(x=…, y=….)’</p></li>
+<li><p><strong>caller_rank</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>) – use ‘None’ if caller does NOT want to participate in ‘fn(…)’
+Otherwise, it’ll represent the rank of a worker process among all workers.
+The value is 0 &lt;= caller_rank &lt; nprocs, and will be visible as a string in
+“os.environ[‘LOCAL_RANK’]”</p></li>
+<li><p><strong>gather</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>) – if True, <cite>ranch</cite> will return a list of return values from each worker.
+If False, and if ‘caller_rank’ is not None (meaning caller process will participate),
+‘ranch()’ will whatever caller process’s execution of ‘fn(…)’ returns.</p></li>
+<li><p><strong>ctx</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.8)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/contextlib.html#contextlib.AbstractContextManager" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">AbstractContextManager</span></code></a>]) – a user defined context manager class object, used in a ‘with’-clause around ‘fn(…)’ call in each process.
+It must be derived from AbstractContextManager, and defines ‘__enter__()’ and ‘__exit__()’ methods.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">None</span></code>, or <code class="docutils literal notranslate"><span class="pre">[base_rank</span> <span class="pre">result,</span> <span class="pre">base_rank+1</span> <span class="pre">result,</span> <span class="pre">....</span> <span class="pre">base_rank+nprocs-1</span> <span class="pre">result]</span></code></p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="modules.html" class="btn btn-neutral float-left" title="mpify" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, Phillip K.S. Chu
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

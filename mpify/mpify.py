@@ -8,14 +8,38 @@ __all__ = ['import_star', 'global_imports', 'ranch', 'TorchDDPCtx', 'in_torchddp
 #  - globals() doesn't necessarily return the '__main__' global scope when inside package function,
 #    thus we use sys.modules['__main__'].__dict__.
 
-def import_star(modules:[str], g:dict=None):
-    "Import * from the list of modules into a given namespace 'g'.  By default into '__main__'."
-    #  - to access caller's globals, see https://docs.python.org/3/library/inspect.html#the-interpreter-stack
-    if g is None: import sys
-    global_imports([f"from {m} import *" for m in modules], g or sys.modules['__main__'].__dict__)
+def import_star(modules:[str], ns:dict=None):
+    """Import ``*`` from a list of module, into namespace ns (default to '__main__')
 
-def global_imports(imports:[str], globals:dict):
-    '''Parse and execute the multi-line import statements, and import the names into 'globals' namespace.'''
+    Args:
+        modules: list of modules or packages
+        ns: destination namespace, optional. If not provided, will default to '__main__'
+
+    """
+    global_imports([f"from {m} import *" for m in modules], ns)
+
+def global_imports(imports:[str], ns:dict=None):
+    """
+    Parse and execute multiple import statements, and import into target namespace 'ns'
+
+    Args:
+        imports: list of import statements, as in Python code.  Supported formats include:
+            * import x, y, z as z_alias
+
+            * from A import x
+
+            * from A import z as z_alias
+
+            * from A import x, y, z as z_alias
+
+            Not supported: 'from A import (a, b)'
+
+        ns: target namespace to import into.  Default to '__main__'
+    """
+
+    if ns is None:
+        import sys
+        ns = sys.modules['__main__'].__dict__
     pat = re.compile(r'^\s*?(?:from\s+?(\S+?)\s+?)?import\s+?(.+)$')
     pat_as = re.compile(r'^\s*?(\S+?)(?:\s*?as\s+?(\S+?))?\s*$')
     for parsed in filter(lambda p:p,[pat.match(i) for i in imports]):
@@ -31,13 +55,13 @@ def global_imports(imports:[str], globals:dict):
             if x == '*': # Handle starred import: 'from X import *'
                 assert from_, SyntaxError(f"From what <module> are you trying to 'import *': {parsed.string}")
                 importables = getattr(from_mod, "__all__", [n for n in dir(from_mod) if not n.startswith('_')])
-                for o in importables: globals[o] = getattr(from_mod, o)
+                for o in importables: ns[o] = getattr(from_mod, o)
             else: # x is either a name in 1 module, OR a module itself
-                globals[y] = getattr(from_mod, x) if from_ else __import__(x, fromlist=[''])
+                ns[y] = getattr(from_mod, x) if from_ else __import__(x, fromlist=[''])
 
 def _contextualize(i:int, nprocs:int, fn:Callable, cm:AbstractContextManager, l=None, env:dict={}, imports=""):
     "Return a function that will setup os.environ and execute a target function within a context manager."
-    if l: assert i < len(l), ValueError("Invalid index {i} > result list size: {len(l)}")
+    if l: assert i < len(l), ValueError("Invalid index {i}, exceeds size of the result list: {len(l)}")
     def _cfn(*args, **kwargs):
         import os
         os.environ.update({"LOCAL_RANK":str(i), "LOCAL_WORLD_SIZE":str(nprocs)})
@@ -54,11 +78,39 @@ def _contextualize(i:int, nprocs:int, fn:Callable, cm:AbstractContextManager, l=
         finally: map(lambda k: os.environ.pop(k, None), ("LOCAL_RANK", "LOCAL_WORLD_SIZE"))               
     return _cfn
 
-def ranch(nprocs:int, fn:Callable, *args, caller_rank:int=0, gather:bool=True, ctx=None, need:str="", imports="", **kwargs):
-    '''Spawn `nprocs` ranked process and launch `fn(*args, **kwargs)`. Caller process can participate as `caller_rank`.
-    Apply ctx mgr if provided.  If `gather` is True (default), return list of all function return values.
-    Otherwise if caller participates, return the value from its execution of fn, or None if caller doesn't participate.
-    '''
+def ranch(nprocs:int, fn:Callable, *args, caller_rank:int=0, gather:bool=True, ctx:AbstractContextManager=None, need:str="", imports="", **kwargs):
+    """ Execute `fn(\*args, \*\*kwargs)` distributedly in `nprocs` processes.
+
+    Inside each forked process, import statements are executed first, then objects/functions
+    listed in `need` from the caller\\'s namespace are made visible to the forked process\\'s
+    python global namespace (they are serialized by 'ranch()').
+    Then, any user defined context manager is applied around the call 'fn(\*args, \*\*kwargs)'.
+    Return value of each call can be gathered in a list, indexed by the process's rank,
+    and returned to the caller of `ranch()`.
+
+    Caller of `ranch()` can participate as one of the workers, if `caller_rank` is not None
+    and `0 <= caller_rank < nprocs`.
+
+    Args:
+        nprocs: Number of processes to fork.  Visible as a string in "os.environ['LOCAL_WORLD_SIZE']"
+            in all worker processes.
+        fn: the function to execute on the worker pool
+        \*args: the positional arguments by values to 'fn(\*args....)'
+        \*\*kwargs: the named parameters to 'fn(x=..., y=....)'
+        caller_rank: use 'None' if caller does NOT want to participate in 'fn(...)'
+            Otherwise, it'll represent the rank of a worker process among all workers.
+            The value is 0 <= caller_rank < nprocs, and will be visible as a string in
+            "os.environ['LOCAL_RANK']"
+        gather: if True, `ranch` will return a list of return values from each worker.
+            If False, and if 'caller_rank' is not None (meaning caller process will participate),
+            'ranch()' will whatever caller process's execution of 'fn(...)' returns.
+        ctx: a user defined context manager class object, used in a 'with'-clause around 'fn(...)' call in each process.
+            It must be derived from AbstractContextManager, and defines '__enter__()' and '__exit__()' methods.
+    
+    Returns:
+        ``None``, or ``[base_rank result, base_rank+1 result, .... base_rank+nprocs-1 result]``
+    """
+
     assert nprocs > 0, ValueError("nprocs: # of processes to launch must be > 0")
     
     children_ranks = list(range(nprocs))
@@ -82,9 +134,21 @@ def ranch(nprocs:int, fn:Callable, *args, caller_rank:int=0, gather:bool=True, c
         for p in procs: p.terminate(), p.join()
 
 class TorchDDPCtx(AbstractContextManager):
-    "Setup/teardown Torch DDP when entering/exiting a `with` clause. os.environ[] must define 'LOCAL_RANK' prior to __enter__() "
+    """
+    A context manager to set up and tear down a PyTorch distributed data parallel process group.
+    os.environ[] must define 'LOCAL_RANK' prior to __enter__() 
+    """
     def __init__(self, *args, world_size:int=None, base_rank:int=0, use_gpu:bool=True,
                  addr:str="127.0.0.1", port:int=29500, num_threads:int=1, **kwargs):
+        """
+        TorchDDPCtx.
+
+        Args:
+            world_size: total number of members in the DDP group
+            base_rank: the starting, lowest rank value of among the forked local processes
+            use_gpu: if True, will set the default CUDA device base on os.environ['LOCAL_RANK']
+            addr, port, num_threads: see PyTorch distributed data parallel documentation.
+        """
         assert world_size and (base_rank >= 0 and world_size > base_rank), ValueError(f"Invalid world_size {world_size} or base_rank {base_rank}. Need to be: world_size > base_rank >=0 ")
 
         self._ws, self._base_rank = world_size, base_rank
@@ -127,7 +191,18 @@ class TorchDDPCtx(AbstractContextManager):
 
 def in_torchddp(nprocs:int, fn:Callable, *args, world_size:int=None, base_rank:int=0,
                 ctx:TorchDDPCtx=None, need:str="", imports:str="", **kwargs):
-    "Launch `fn(*args, **kwargs)` in Torch DDP group of 'world_size' members on `nprocs` local processes RANK from ['base_rank'..'nprocs'-1]"
+    """Launch `fn(*args, **kwargs)` in a new PyTorch distributed data parallel process group.
+
+    Args:
+        nprocs: Number of local processes to fork
+        fn, \*args, \*\*kwargs: the functions and its arguments
+        world_size: total number of members in the entire PyTorch DDP group
+        base_rank: the lowest, starting rank of in the local processes
+        ctx: by default will use `mpify.TorchDDPCtx` to set up torch distributed group,
+            but user can override it with their own if necessary.
+        need: names of local objects to serialize over, comma-separated
+        imports: multi-line import statements, to apply in each forked process.
+    """
     if world_size is None: world_size = nprocs
     assert base_rank + nprocs <= world_size, ValueError(f"nprocs({nprocs}) + base_rank({base_rank}) must be < world_size({world_size})")
     if ctx is None: ctx = TorchDDPCtx(world_size=world_size, base_rank=base_rank)

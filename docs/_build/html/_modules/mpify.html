@@ -1,0 +1,410 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>mpify &mdash; mpify 0.1.0 documentation</title>
+  
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+
+  
+  
+  
+  
+    <link rel="canonical" href="https://mpify.readthedocs.io_modules/mpify.html"/>
+  
+
+  
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home" alt="Documentation Home"> mpify
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">API:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../modules.html">mpify</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../mpify.html">mpify package</a></li>
+</ul>
+
+            
+          
+        </div>
+        
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">mpify</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
+        
+          <li><a href="index.html">Module code</a> &raquo;</li>
+        
+      <li>mpify</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for mpify</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">os</span><span class="o">,</span> <span class="nn">sys</span><span class="o">,</span> <span class="nn">re</span><span class="o">,</span> <span class="nn">multiprocess</span> <span class="k">as</span> <span class="nn">mp</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Callable</span>
+<span class="kn">from</span> <span class="nn">contextlib</span> <span class="kn">import</span> <span class="n">AbstractContextManager</span><span class="p">,</span> <span class="n">nullcontext</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;import_star&#39;</span><span class="p">,</span> <span class="s1">&#39;global_imports&#39;</span><span class="p">,</span> <span class="s1">&#39;ranch&#39;</span><span class="p">,</span> <span class="s1">&#39;TorchDDPCtx&#39;</span><span class="p">,</span> <span class="s1">&#39;in_torchddp&#39;</span><span class="p">]</span>
+
+<span class="c1">#  - globals() doesn&#39;t necessarily return the &#39;__main__&#39; global scope when inside package function,</span>
+<span class="c1">#    thus we use sys.modules[&#39;__main__&#39;].__dict__.</span>
+
+<div class="viewcode-block" id="import_star"><a class="viewcode-back" href="../mpify.html#mpify.import_star">[docs]</a><span class="k">def</span> <span class="nf">import_star</span><span class="p">(</span><span class="n">modules</span><span class="p">:[</span><span class="nb">str</span><span class="p">],</span> <span class="n">ns</span><span class="p">:</span><span class="nb">dict</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Import ``*`` from a list of module, into namespace ns (default to &#39;__main__&#39;)</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        modules: list of modules or packages</span>
+<span class="sd">        ns: destination namespace, optional. If not provided, will default to &#39;__main__&#39;</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">global_imports</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;from </span><span class="si">{</span><span class="n">m</span><span class="si">}</span><span class="s2"> import *&quot;</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">modules</span><span class="p">],</span> <span class="n">ns</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="global_imports"><a class="viewcode-back" href="../mpify.html#mpify.global_imports">[docs]</a><span class="k">def</span> <span class="nf">global_imports</span><span class="p">(</span><span class="n">imports</span><span class="p">:[</span><span class="nb">str</span><span class="p">],</span> <span class="n">ns</span><span class="p">:</span><span class="nb">dict</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Parse and execute multiple import statements, and import into target namespace &#39;ns&#39;</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        imports: list of import statements, as in Python code.  Supported formats include:</span>
+<span class="sd">            * import x, y, z as z_alias</span>
+
+<span class="sd">            * from A import x</span>
+
+<span class="sd">            * from A import z as z_alias</span>
+
+<span class="sd">            * from A import x, y, z as z_alias</span>
+
+<span class="sd">            Not supported: &#39;from A import (a, b)&#39;</span>
+
+<span class="sd">        ns: target namespace to import into.  Default to &#39;__main__&#39;</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">ns</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="kn">import</span> <span class="nn">sys</span>
+        <span class="n">ns</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">[</span><span class="s1">&#39;__main__&#39;</span><span class="p">]</span><span class="o">.</span><span class="vm">__dict__</span>
+    <span class="n">pat</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;^\s*?(?:from\s+?(\S+?)\s+?)?import\s+?(.+)$&#39;</span><span class="p">)</span>
+    <span class="n">pat_as</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;^\s*?(\S+?)(?:\s*?as\s+?(\S+?))?\s*$&#39;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">parsed</span> <span class="ow">in</span> <span class="nb">filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">p</span><span class="p">:</span><span class="n">p</span><span class="p">,[</span><span class="n">pat</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">imports</span><span class="p">]):</span>
+        <span class="p">(</span><span class="n">from_</span><span class="p">,</span> <span class="n">imp_</span><span class="p">)</span>  <span class="o">=</span> <span class="n">parsed</span><span class="o">.</span><span class="n">groups</span><span class="p">()</span>
+        <span class="n">imps</span> <span class="o">=</span> <span class="n">imp_</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Parse &quot;from X import ...&quot;</span>
+        <span class="n">from_mod</span> <span class="o">=</span> <span class="nb">__import__</span><span class="p">(</span><span class="n">from_</span><span class="p">,</span> <span class="n">fromlist</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;&#39;</span><span class="p">])</span> <span class="k">if</span> <span class="n">from_</span> <span class="k">else</span> <span class="kc">None</span>
+
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">imps</span><span class="p">:</span> <span class="c1"># each comma-separated item in import a, b, x as y</span>
+            <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span> <span class="o">=</span> <span class="n">pat_as</span><span class="o">.</span><span class="n">match</span><span class="p">(</span><span class="n">name</span><span class="p">)</span><span class="o">.</span><span class="n">groups</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">y</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span> <span class="n">y</span><span class="o">=</span><span class="n">x</span>
+            <span class="k">if</span> <span class="n">x</span> <span class="o">==</span> <span class="s1">&#39;*&#39;</span><span class="p">:</span> <span class="c1"># Handle starred import: &#39;from X import *&#39;</span>
+                <span class="k">assert</span> <span class="n">from_</span><span class="p">,</span> <span class="ne">SyntaxError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;From what &lt;module&gt; are you trying to &#39;import *&#39;: </span><span class="si">{</span><span class="n">parsed</span><span class="o">.</span><span class="n">string</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">importables</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">from_mod</span><span class="p">,</span> <span class="s2">&quot;__all__&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">n</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">(</span><span class="n">from_mod</span><span class="p">)</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">n</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)])</span>
+                <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">importables</span><span class="p">:</span> <span class="n">ns</span><span class="p">[</span><span class="n">o</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">from_mod</span><span class="p">,</span> <span class="n">o</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span> <span class="c1"># x is either a name in 1 module, OR a module itself</span>
+                <span class="n">ns</span><span class="p">[</span><span class="n">y</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">from_mod</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span> <span class="k">if</span> <span class="n">from_</span> <span class="k">else</span> <span class="nb">__import__</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">fromlist</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;&#39;</span><span class="p">])</span></div>
+
+<span class="k">def</span> <span class="nf">_contextualize</span><span class="p">(</span><span class="n">i</span><span class="p">:</span><span class="nb">int</span><span class="p">,</span> <span class="n">nprocs</span><span class="p">:</span><span class="nb">int</span><span class="p">,</span> <span class="n">fn</span><span class="p">:</span><span class="n">Callable</span><span class="p">,</span> <span class="n">cm</span><span class="p">:</span><span class="n">AbstractContextManager</span><span class="p">,</span> <span class="n">l</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">env</span><span class="p">:</span><span class="nb">dict</span><span class="o">=</span><span class="p">{},</span> <span class="n">imports</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
+    <span class="s2">&quot;Return a function that will setup os.environ and execute a target function within a context manager.&quot;</span>
+    <span class="k">if</span> <span class="n">l</span><span class="p">:</span> <span class="k">assert</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">l</span><span class="p">),</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Invalid index </span><span class="si">{i}</span><span class="s2">, exceeds size of the result list: {len(l)}&quot;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">_cfn</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">os</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;LOCAL_RANK&quot;</span><span class="p">:</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">),</span> <span class="s2">&quot;LOCAL_WORLD_SIZE&quot;</span><span class="p">:</span><span class="nb">str</span><span class="p">(</span><span class="n">nprocs</span><span class="p">)})</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="kn">import</span> <span class="nn">sys</span>
+            <span class="kn">from</span> <span class="nn">mpify</span> <span class="kn">import</span> <span class="n">global_imports</span>
+            <span class="c1"># import env into &#39;__main__&#39;, which can be in a subprocess here.</span>
+            <span class="n">g</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">[</span><span class="s1">&#39;__main__&#39;</span><span class="p">]</span><span class="o">.</span><span class="vm">__dict__</span>
+            <span class="n">global_imports</span><span class="p">(</span><span class="n">imports</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">),</span> <span class="n">g</span><span class="p">)</span>
+            <span class="n">g</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">env</span><span class="p">)</span>
+            <span class="k">with</span> <span class="n">cm</span> <span class="ow">or</span> <span class="n">nullcontext</span><span class="p">():</span> <span class="n">r</span> <span class="o">=</span> <span class="n">fn</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">l</span><span class="p">:</span> <span class="n">l</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">r</span>
+            <span class="k">return</span> <span class="n">r</span>
+        <span class="k">finally</span><span class="p">:</span> <span class="nb">map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">k</span><span class="p">:</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span> <span class="p">(</span><span class="s2">&quot;LOCAL_RANK&quot;</span><span class="p">,</span> <span class="s2">&quot;LOCAL_WORLD_SIZE&quot;</span><span class="p">))</span>               
+    <span class="k">return</span> <span class="n">_cfn</span>
+
+<div class="viewcode-block" id="ranch"><a class="viewcode-back" href="../mpify.html#mpify.ranch">[docs]</a><span class="k">def</span> <span class="nf">ranch</span><span class="p">(</span><span class="n">nprocs</span><span class="p">:</span><span class="nb">int</span><span class="p">,</span> <span class="n">fn</span><span class="p">:</span><span class="n">Callable</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">caller_rank</span><span class="p">:</span><span class="nb">int</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">gather</span><span class="p">:</span><span class="nb">bool</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span><span class="n">AbstractContextManager</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">need</span><span class="p">:</span><span class="nb">str</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">imports</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Execute `fn(\*args, \*\*kwargs)` distributedly in `nprocs` processes.</span>
+
+<span class="sd">    Inside each forked process, import statements are executed first, then objects/functions</span>
+<span class="sd">    listed in `need` from the caller\\&#39;s namespace are made visible to the forked process\\&#39;s</span>
+<span class="sd">    python global namespace (they are serialized by &#39;ranch()&#39;).</span>
+<span class="sd">    Then, any user defined context manager is applied around the call &#39;fn(\*args, \*\*kwargs)&#39;.</span>
+<span class="sd">    Return value of each call can be gathered in a list, indexed by the process&#39;s rank,</span>
+<span class="sd">    and returned to the caller of `ranch()`.</span>
+
+<span class="sd">    Caller of `ranch()` can participate as one of the workers, if `caller_rank` is not None</span>
+<span class="sd">    and `0 &lt;= caller_rank &lt; nprocs`.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        nprocs: Number of processes to fork.  Visible as a string in &quot;os.environ[&#39;LOCAL_WORLD_SIZE&#39;]&quot;</span>
+<span class="sd">            in all worker processes.</span>
+<span class="sd">        fn: the function to execute on the worker pool</span>
+<span class="sd">        \*args: the positional arguments by values to &#39;fn(\*args....)&#39;</span>
+<span class="sd">        \*\*kwargs: the named parameters to &#39;fn(x=..., y=....)&#39;</span>
+<span class="sd">        caller_rank: use &#39;None&#39; if caller does NOT want to participate in &#39;fn(...)&#39;</span>
+<span class="sd">            Otherwise, it&#39;ll represent the rank of a worker process among all workers.</span>
+<span class="sd">            The value is 0 &lt;= caller_rank &lt; nprocs, and will be visible as a string in</span>
+<span class="sd">            &quot;os.environ[&#39;LOCAL_RANK&#39;]&quot;</span>
+<span class="sd">        gather: if True, `ranch` will return a list of return values from each worker.</span>
+<span class="sd">            If False, and if &#39;caller_rank&#39; is not None (meaning caller process will participate),</span>
+<span class="sd">            &#39;ranch()&#39; will whatever caller process&#39;s execution of &#39;fn(...)&#39; returns.</span>
+<span class="sd">        ctx: a user defined context manager class object, used in a &#39;with&#39;-clause around &#39;fn(...)&#39; call in each process.</span>
+<span class="sd">            It must be derived from AbstractContextManager, and defines &#39;__enter__()&#39; and &#39;__exit__()&#39; methods.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        ``None``, or ``[base_rank result, base_rank+1 result, .... base_rank+nprocs-1 result]``</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">assert</span> <span class="n">nprocs</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;nprocs: # of processes to launch must be &gt; 0&quot;</span><span class="p">)</span>
+    
+    <span class="n">children_ranks</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="n">nprocs</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">caller_rank</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">caller_rank</span> <span class="o">&lt;</span> <span class="n">nprocs</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid caller_rank </span><span class="si">{</span><span class="n">caller_rank</span><span class="si">}</span><span class="s2">, must satisfy 0 &lt;= caller_rank &lt; </span><span class="si">{</span><span class="n">nprocs</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">children_ranks</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">caller_rank</span><span class="p">)</span>
+    <span class="n">multiproc_ctx</span><span class="p">,</span> <span class="n">procs</span> <span class="o">=</span> <span class="n">mp</span><span class="o">.</span><span class="n">get_context</span><span class="p">(</span><span class="s2">&quot;spawn&quot;</span><span class="p">),</span> <span class="p">[]</span>
+    <span class="n">result_list</span> <span class="o">=</span> <span class="n">multiproc_ctx</span><span class="o">.</span><span class="n">Manager</span><span class="p">()</span><span class="o">.</span><span class="n">list</span><span class="p">([</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="n">nprocs</span><span class="p">)</span> <span class="k">if</span> <span class="n">gather</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="c1"># pass globals in this process to subprocess via fn&#39;s wrapper, &#39;target_fn&#39;</span>
+        <span class="n">env</span> <span class="o">=</span> <span class="p">{</span><span class="n">k</span> <span class="p">:</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">[</span><span class="s1">&#39;__main__&#39;</span><span class="p">]</span><span class="o">.</span><span class="vm">__dict__</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">need</span><span class="o">.</span><span class="n">split</span><span class="p">()}</span>
+        <span class="k">for</span> <span class="n">rank</span> <span class="ow">in</span> <span class="n">children_ranks</span><span class="p">:</span>
+            <span class="n">target_fn</span> <span class="o">=</span> <span class="n">_contextualize</span><span class="p">(</span><span class="n">rank</span><span class="p">,</span> <span class="n">nprocs</span><span class="p">,</span> <span class="n">fn</span><span class="p">,</span> <span class="n">cm</span><span class="o">=</span><span class="n">ctx</span><span class="p">,</span> <span class="n">l</span><span class="o">=</span><span class="n">result_list</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="n">env</span><span class="p">,</span> <span class="n">imports</span><span class="o">=</span><span class="n">imports</span><span class="p">)</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="n">multiproc_ctx</span><span class="o">.</span><span class="n">Process</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">target_fn</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="n">args</span><span class="p">,</span> <span class="n">kwargs</span><span class="o">=</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="n">procs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">p</span><span class="p">)</span>
+            <span class="n">p</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        <span class="n">p_res</span> <span class="o">=</span> <span class="p">(</span><span class="n">_contextualize</span><span class="p">(</span><span class="n">caller_rank</span><span class="p">,</span> <span class="n">nprocs</span><span class="p">,</span> <span class="n">fn</span><span class="p">,</span> <span class="n">cm</span><span class="o">=</span><span class="n">ctx</span><span class="p">,</span> <span class="n">l</span><span class="o">=</span><span class="n">result_list</span><span class="p">,</span> <span class="n">env</span><span class="o">=</span><span class="n">env</span><span class="p">,</span> <span class="n">imports</span><span class="o">=</span><span class="n">imports</span><span class="p">))(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="k">if</span> <span class="n">caller_rank</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">procs</span><span class="p">:</span> <span class="n">p</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">result_list</span> <span class="k">if</span> <span class="n">gather</span> <span class="k">else</span> <span class="n">p_res</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">procs</span><span class="p">:</span> <span class="n">p</span><span class="o">.</span><span class="n">terminate</span><span class="p">(),</span> <span class="n">p</span><span class="o">.</span><span class="n">join</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="TorchDDPCtx"><a class="viewcode-back" href="../mpify.html#mpify.TorchDDPCtx">[docs]</a><span class="k">class</span> <span class="nc">TorchDDPCtx</span><span class="p">(</span><span class="n">AbstractContextManager</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A context manager to set up and tear down a PyTorch distributed data parallel process group.</span>
+<span class="sd">    os.environ[] must define &#39;LOCAL_RANK&#39; prior to __enter__() </span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">world_size</span><span class="p">:</span><span class="nb">int</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">base_rank</span><span class="p">:</span><span class="nb">int</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">use_gpu</span><span class="p">:</span><span class="nb">bool</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                 <span class="n">addr</span><span class="p">:</span><span class="nb">str</span><span class="o">=</span><span class="s2">&quot;127.0.0.1&quot;</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span><span class="nb">int</span><span class="o">=</span><span class="mi">29500</span><span class="p">,</span> <span class="n">num_threads</span><span class="p">:</span><span class="nb">int</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        TorchDDPCtx.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            world_size: total number of members in the DDP group</span>
+<span class="sd">            base_rank: the starting, lowest rank value of among the forked local processes</span>
+<span class="sd">            use_gpu: if True, will set the default CUDA device base on os.environ[&#39;LOCAL_RANK&#39;]</span>
+<span class="sd">            addr, port, num_threads: see PyTorch distributed data parallel documentation.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">assert</span> <span class="n">world_size</span> <span class="ow">and</span> <span class="p">(</span><span class="n">base_rank</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">world_size</span> <span class="o">&gt;</span> <span class="n">base_rank</span><span class="p">),</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid world_size </span><span class="si">{</span><span class="n">world_size</span><span class="si">}</span><span class="s2"> or base_rank </span><span class="si">{</span><span class="n">base_rank</span><span class="si">}</span><span class="s2">. Need to be: world_size &gt; base_rank &gt;=0 &quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ws</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base_rank</span> <span class="o">=</span> <span class="n">world_size</span><span class="p">,</span> <span class="n">base_rank</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_a</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_p</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_nt</span> <span class="o">=</span> <span class="n">addr</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">port</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">num_threads</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_use_gpu</span> <span class="o">=</span> <span class="n">use_gpu</span> <span class="ow">and</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_myddp</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="s1">&#39;gloo&#39;</span> <span class="c1"># default to CPU backend</span>
+
+    <span class="k">def</span> <span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="kn">import</span> <span class="nn">os</span>
+        <span class="k">try</span><span class="p">:</span> <span class="n">local_rank</span><span class="p">,</span> <span class="n">local_ws</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;LOCAL_RANK&#39;</span><span class="p">]),</span> <span class="nb">int</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s1">&#39;LOCAL_WORLD_SIZE&#39;</span><span class="p">])</span>
+        <span class="k">except</span> <span class="ne">KeyError</span><span class="p">:</span> <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;&#39;LOCAL_RANK&#39; or &#39;LOCAL_RANK&#39; not found in os.environ&quot;</span><span class="p">)</span>
+
+        <span class="k">assert</span> <span class="mi">0</span> <span class="o">&lt;</span> <span class="n">local_ws</span> <span class="o">&lt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ws</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid &#39;LOCAL_WORLD_SIZE&#39;: </span><span class="si">{</span><span class="n">local_ws</span><span class="si">}</span><span class="s2">, should be 0 &lt; ws &lt;= </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_ws</span><span class="si">}</span><span class="s2">!&quot;</span><span class="p">)</span>
+
+        <span class="n">rank</span> <span class="o">=</span> <span class="n">local_rank</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base_rank</span>
+        <span class="k">assert</span> <span class="n">rank</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ws</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;local_rank </span><span class="si">{</span><span class="n">local_rank</span><span class="si">}</span><span class="s2"> + base_rank </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_base_rank</span><span class="si">}</span><span class="s2">, should be &lt; (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_ws</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_use_gpu</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="n">local_rank</span><span class="o">&lt;</span><span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">device_count</span><span class="p">(),</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;LOCAL_RANK </span><span class="si">{</span><span class="n">local_rank</span><span class="si">}</span><span class="s2"> &gt; available CUDA devices&quot;</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">set_device</span><span class="p">(</span><span class="n">local_rank</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_backend</span> <span class="o">=</span> <span class="s1">&#39;nccl&#39;</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Rank [</span><span class="si">{</span><span class="n">rank</span><span class="si">}</span><span class="s2">] using CUDA GPU </span><span class="si">{</span><span class="n">local_rank</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">RuntimeError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_use_gpu</span> <span class="o">=</span> <span class="kc">False</span><span class="p">;</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unable to set cuda device </span><span class="si">{</span><span class="n">local_rank</span><span class="si">}</span><span class="s2">, using CPU. </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;WORLD_SIZE&quot;</span><span class="p">:</span><span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_ws</span><span class="p">),</span> <span class="s2">&quot;RANK&quot;</span><span class="p">:</span><span class="nb">str</span><span class="p">(</span><span class="n">rank</span><span class="p">),</span>
+            <span class="s2">&quot;MASTER_ADDR&quot;</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">_a</span><span class="p">,</span> <span class="s2">&quot;MASTER_PORT&quot;</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">_p</span><span class="p">,</span> <span class="s2">&quot;OMP_NUM_THREADS&quot;</span><span class="p">:</span><span class="bp">self</span><span class="o">.</span><span class="n">_nt</span><span class="p">})</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">torch</span><span class="o">.</span><span class="n">distributed</span><span class="o">.</span><span class="n">is_initialized</span><span class="p">():</span>
+            <span class="n">torch</span><span class="o">.</span><span class="n">distributed</span><span class="o">.</span><span class="n">init_process_group</span><span class="p">(</span><span class="n">backend</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_backend</span><span class="p">,</span> <span class="n">init_method</span><span class="o">=</span><span class="s1">&#39;env://&#39;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_myddp</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">distributed</span><span class="o">.</span><span class="n">is_initialized</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="fm">__exit__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc_type</span><span class="p">,</span> <span class="n">exc_value</span><span class="p">,</span> <span class="n">traceback</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_myddp</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">distributed</span><span class="o">.</span><span class="n">destroy_process_group</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_use_gpu</span><span class="p">:</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">empty_cache</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;WORLD_SIZE&quot;</span><span class="p">,</span> <span class="s2">&quot;RANK&quot;</span><span class="p">,</span> <span class="s2">&quot;MASTER_ADDR&quot;</span><span class="p">,</span> <span class="s2">&quot;MASTER_PORT&quot;</span><span class="p">,</span> <span class="s2">&quot;OMP_NUM_THREADS&quot;</span><span class="p">]:</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="n">k</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">exc_type</span> <span class="ow">is</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="in_torchddp"><a class="viewcode-back" href="../mpify.html#mpify.in_torchddp">[docs]</a><span class="k">def</span> <span class="nf">in_torchddp</span><span class="p">(</span><span class="n">nprocs</span><span class="p">:</span><span class="nb">int</span><span class="p">,</span> <span class="n">fn</span><span class="p">:</span><span class="n">Callable</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">world_size</span><span class="p">:</span><span class="nb">int</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">base_rank</span><span class="p">:</span><span class="nb">int</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+                <span class="n">ctx</span><span class="p">:</span><span class="n">TorchDDPCtx</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">need</span><span class="p">:</span><span class="nb">str</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">imports</span><span class="p">:</span><span class="nb">str</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Launch `fn(*args, **kwargs)` in a new PyTorch distributed data parallel process group.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        nprocs: Number of local processes to fork</span>
+<span class="sd">        fn, \*args, \*\*kwargs: the functions and its arguments</span>
+<span class="sd">        world_size: total number of members in the entire PyTorch DDP group</span>
+<span class="sd">        base_rank: the lowest, starting rank of in the local processes</span>
+<span class="sd">        ctx: by default will use `mpify.TorchDDPCtx` to set up torch distributed group,</span>
+<span class="sd">            but user can override it with their own if necessary.</span>
+<span class="sd">        need: names of local objects to serialize over, comma-separated</span>
+<span class="sd">        imports: multi-line import statements, to apply in each forked process.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">world_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span> <span class="n">world_size</span> <span class="o">=</span> <span class="n">nprocs</span>
+    <span class="k">assert</span> <span class="n">base_rank</span> <span class="o">+</span> <span class="n">nprocs</span> <span class="o">&lt;=</span> <span class="n">world_size</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;nprocs(</span><span class="si">{</span><span class="n">nprocs</span><span class="si">}</span><span class="s2">) + base_rank(</span><span class="si">{</span><span class="n">base_rank</span><span class="si">}</span><span class="s2">) must be &lt; world_size(</span><span class="si">{</span><span class="n">world_size</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">ctx</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span> <span class="n">ctx</span> <span class="o">=</span> <span class="n">TorchDDPCtx</span><span class="p">(</span><span class="n">world_size</span><span class="o">=</span><span class="n">world_size</span><span class="p">,</span> <span class="n">base_rank</span><span class="o">=</span><span class="n">base_rank</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ranch</span><span class="p">(</span><span class="n">nprocs</span><span class="p">,</span> <span class="n">fn</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">caller_rank</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">gather</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">ctx</span><span class="o">=</span><span class="n">ctx</span><span class="p">,</span> <span class="n">need</span><span class="o">=</span><span class="n">need</span><span class="p">,</span> <span class="n">imports</span><span class="o">=</span><span class="n">imports</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        
+        &copy; Copyright 2020, Phillip K.S. Chu
+
+    </p>
+  </div>
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>
