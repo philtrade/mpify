@@ -84,7 +84,6 @@
             
               <p class="caption"><span class="caption-text">API:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../modules.html">mpify</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../mpify.html">mpify package</a></li>
 </ul>
 
@@ -170,12 +169,13 @@
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">global_imports</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;from </span><span class="si">{</span><span class="n">m</span><span class="si">}</span><span class="s2"> import *&quot;</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">modules</span><span class="p">],</span> <span class="n">ns</span><span class="p">)</span></div>
 
-<div class="viewcode-block" id="global_imports"><a class="viewcode-back" href="../mpify.html#mpify.global_imports">[docs]</a><span class="k">def</span> <span class="nf">global_imports</span><span class="p">(</span><span class="n">imports</span><span class="p">:[</span><span class="nb">str</span><span class="p">],</span> <span class="n">ns</span><span class="p">:</span><span class="nb">dict</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<div class="viewcode-block" id="global_imports"><a class="viewcode-back" href="../mpify-orig.html#mpify.global_imports">[docs]</a><span class="k">def</span> <span class="nf">global_imports</span><span class="p">(</span><span class="n">imports</span><span class="p">:[</span><span class="nb">str</span><span class="p">],</span> <span class="n">ns</span><span class="p">:</span><span class="nb">dict</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Parse and execute multiple import statements, and import into target namespace &#39;ns&#39;</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        imports: list of import statements, as in Python code.  Supported formats include:</span>
+<span class="sd">        </span>
 <span class="sd">            * import x, y, z as z_alias</span>
 
 <span class="sd">            * from A import x</span>

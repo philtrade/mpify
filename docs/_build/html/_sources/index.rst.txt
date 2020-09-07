@@ -10,5 +10,4 @@ mpify Documentation
    :maxdepth: 2
    :caption: API:
 
-   modules
    mpify

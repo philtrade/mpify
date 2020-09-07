@@ -5,7 +5,8 @@ Module contents
 ---------------
 
 .. automodule:: mpify
-   :members:
+   :members: ranch, in_torchddp, TorchDDPCtx
    :undoc-members:
    :show-inheritance:
+   :member-order: bysource
 
