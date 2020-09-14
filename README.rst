@@ -26,13 +26,13 @@ Original:
 
 |NBexOriginal|
 
-.. |NBexOriginal| image:: https://github.com/philtrade/mpify/images/01_intro_train_cnn_orig.png
+.. |NBexOriginal| image:: https://github.com/philtrade/mpify/blob/master/images/01_intro_train_cnn_orig.png
 
 `mpify`-ed:
 
 |NBexMpified|
 
-.. |NBexMpified| image:: https://github.com/philtrade/mpify/images/01_intro_train_cnn_mpify.png
+.. |NBexMpified| image:: https://github.com/philtrade/mpify/blob/master/images/01_intro_train_cnn_mpify.png
 
 More notebook examples can be found in the [examples/](/examples) directory.
 
