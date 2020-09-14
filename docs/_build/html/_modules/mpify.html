@@ -159,7 +159,7 @@
 <span class="c1">#  - globals() doesn&#39;t necessarily return the &#39;__main__&#39; global scope when inside package function,</span>
 <span class="c1">#    thus we use sys.modules[&#39;__main__&#39;].__dict__.</span>
 
-<div class="viewcode-block" id="import_star"><a class="viewcode-back" href="../mpify.html#mpify.import_star">[docs]</a><span class="k">def</span> <span class="nf">import_star</span><span class="p">(</span><span class="n">modules</span><span class="p">:[</span><span class="nb">str</span><span class="p">],</span> <span class="n">ns</span><span class="p">:</span><span class="nb">dict</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">import_star</span><span class="p">(</span><span class="n">modules</span><span class="p">:[</span><span class="nb">str</span><span class="p">],</span> <span class="n">ns</span><span class="p">:</span><span class="nb">dict</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;Import ``*`` from a list of module, into namespace ns (default to &#39;__main__&#39;)</span>
 
 <span class="sd">    Args:</span>
@@ -167,15 +167,15 @@
 <span class="sd">        ns: destination namespace, optional. If not provided, will default to &#39;__main__&#39;</span>
 
 <span class="sd">    &quot;&quot;&quot;</span>
-    <span class="n">global_imports</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;from </span><span class="si">{</span><span class="n">m</span><span class="si">}</span><span class="s2"> import *&quot;</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">modules</span><span class="p">],</span> <span class="n">ns</span><span class="p">)</span></div>
+    <span class="n">global_imports</span><span class="p">([</span><span class="sa">f</span><span class="s2">&quot;from </span><span class="si">{</span><span class="n">m</span><span class="si">}</span><span class="s2"> import *&quot;</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">modules</span><span class="p">],</span> <span class="n">ns</span><span class="p">)</span>
 
-<div class="viewcode-block" id="global_imports"><a class="viewcode-back" href="../mpify-orig.html#mpify.global_imports">[docs]</a><span class="k">def</span> <span class="nf">global_imports</span><span class="p">(</span><span class="n">imports</span><span class="p">:[</span><span class="nb">str</span><span class="p">],</span> <span class="n">ns</span><span class="p">:</span><span class="nb">dict</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">global_imports</span><span class="p">(</span><span class="n">imports</span><span class="p">:[</span><span class="nb">str</span><span class="p">],</span> <span class="n">ns</span><span class="p">:</span><span class="nb">dict</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    Parse and execute multiple import statements, and import into target namespace &#39;ns&#39;</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        imports: list of import statements, as in Python code.  Supported formats include:</span>
-<span class="sd">        </span>
+
 <span class="sd">            * import x, y, z as z_alias</span>
 
 <span class="sd">            * from A import x</span>
@@ -209,7 +209,7 @@
                 <span class="n">importables</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">from_mod</span><span class="p">,</span> <span class="s2">&quot;__all__&quot;</span><span class="p">,</span> <span class="p">[</span><span class="n">n</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="nb">dir</span><span class="p">(</span><span class="n">from_mod</span><span class="p">)</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">n</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;_&#39;</span><span class="p">)])</span>
                 <span class="k">for</span> <span class="n">o</span> <span class="ow">in</span> <span class="n">importables</span><span class="p">:</span> <span class="n">ns</span><span class="p">[</span><span class="n">o</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">from_mod</span><span class="p">,</span> <span class="n">o</span><span class="p">)</span>
             <span class="k">else</span><span class="p">:</span> <span class="c1"># x is either a name in 1 module, OR a module itself</span>
-                <span class="n">ns</span><span class="p">[</span><span class="n">y</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">from_mod</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span> <span class="k">if</span> <span class="n">from_</span> <span class="k">else</span> <span class="nb">__import__</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">fromlist</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;&#39;</span><span class="p">])</span></div>
+                <span class="n">ns</span><span class="p">[</span><span class="n">y</span><span class="p">]</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">from_mod</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span> <span class="k">if</span> <span class="n">from_</span> <span class="k">else</span> <span class="nb">__import__</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">fromlist</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;&#39;</span><span class="p">])</span>
 
 <span class="k">def</span> <span class="nf">_contextualize</span><span class="p">(</span><span class="n">i</span><span class="p">:</span><span class="nb">int</span><span class="p">,</span> <span class="n">nprocs</span><span class="p">:</span><span class="nb">int</span><span class="p">,</span> <span class="n">fn</span><span class="p">:</span><span class="n">Callable</span><span class="p">,</span> <span class="n">cm</span><span class="p">:</span><span class="n">AbstractContextManager</span><span class="p">,</span> <span class="n">l</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">env</span><span class="p">:</span><span class="nb">dict</span><span class="o">=</span><span class="p">{},</span> <span class="n">imports</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span>
     <span class="s2">&quot;Return a function that will setup os.environ and execute a target function within a context manager.&quot;</span>
@@ -231,36 +231,42 @@
     <span class="k">return</span> <span class="n">_cfn</span>
 
 <div class="viewcode-block" id="ranch"><a class="viewcode-back" href="../mpify.html#mpify.ranch">[docs]</a><span class="k">def</span> <span class="nf">ranch</span><span class="p">(</span><span class="n">nprocs</span><span class="p">:</span><span class="nb">int</span><span class="p">,</span> <span class="n">fn</span><span class="p">:</span><span class="n">Callable</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">caller_rank</span><span class="p">:</span><span class="nb">int</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">gather</span><span class="p">:</span><span class="nb">bool</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">ctx</span><span class="p">:</span><span class="n">AbstractContextManager</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">need</span><span class="p">:</span><span class="nb">str</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">imports</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot; Execute `fn(\*args, \*\*kwargs)` distributedly in `nprocs` processes.</span>
+    <span class="sd">&quot;&quot;&quot; Execute `fn(\*args, \*\*kwargs)` distributedly in `nprocs` processes.  User can</span>
+<span class="sd">    serialize over objects and functions, spell out import statements, manage execution</span>
+<span class="sd">    context, gather results, and the parent process can participate as one of the workers.</span>
 
-<span class="sd">    Inside each forked process, import statements are executed first, then objects/functions</span>
-<span class="sd">    listed in `need` from the caller\\&#39;s namespace are made visible to the forked process\\&#39;s</span>
-<span class="sd">    python global namespace (they are serialized by &#39;ranch()&#39;).</span>
-<span class="sd">    Then, any user defined context manager is applied around the call &#39;fn(\*args, \*\*kwargs)&#39;.</span>
-<span class="sd">    Return value of each call can be gathered in a list, indexed by the process&#39;s rank,</span>
+<span class="sd">    If `caller_rank` is `0 &lt;= caller_rank &lt; nprocs`, only `nprocs - 1` processes will be forked, and the caller process will be a worker to run its share of `fn(..)`.</span>
+
+<span class="sd">    If `caller_rank` is ``None``, `nprocs` processes will be forked.</span>
+
+<span class="sd">    Inside each worker process, its relative rank among all workers is set up in `os.environ[&#39;LOCAL_RANK&#39;]`, and the total</span>
+<span class="sd">    number of workers is set up in `os.environ[&#39;LOCAL_WORLD_SIZE&#39;]`, both as strings.</span>
+
+<span class="sd">    Then import statements in `imports`, followed by any objects/functions in `need`, are brought</span>
+<span class="sd">    into the python global namespace.</span>
+
+<span class="sd">    Then, context manager `ctx` is applied around the call `fn(\*args, \*\*kwargs)`.</span>
+
+<span class="sd">    Return value of each worker can be gathered in a list (indexed by the process&#39;s rank)</span>
 <span class="sd">    and returned to the caller of `ranch()`.</span>
 
-<span class="sd">    Caller of `ranch()` can participate as one of the workers, if `caller_rank` is not None</span>
-<span class="sd">    and `0 &lt;= caller_rank &lt; nprocs`.</span>
-
 <span class="sd">    Args:</span>
-<span class="sd">        nprocs: Number of processes to fork.  Visible as a string in &quot;os.environ[&#39;LOCAL_WORLD_SIZE&#39;]&quot;</span>
+<span class="sd">        nprocs: Number of processes to fork.  Visible as a string in `os.environ[&#39;LOCAL_WORLD_SIZE&#39;]`</span>
 <span class="sd">            in all worker processes.</span>
 <span class="sd">        fn: the function to execute on the worker pool</span>
-<span class="sd">        \*args: the positional arguments by values to &#39;fn(\*args....)&#39;</span>
-<span class="sd">        \*\*kwargs: the named parameters to &#39;fn(x=..., y=....)&#39;</span>
-<span class="sd">        caller_rank: use &#39;None&#39; if caller does NOT want to participate in &#39;fn(...)&#39;</span>
-<span class="sd">            Otherwise, it&#39;ll represent the rank of a worker process among all workers.</span>
-<span class="sd">            The value is 0 &lt;= caller_rank &lt; nprocs, and will be visible as a string in</span>
-<span class="sd">            &quot;os.environ[&#39;LOCAL_RANK&#39;]&quot;</span>
-<span class="sd">        gather: if True, `ranch` will return a list of return values from each worker.</span>
-<span class="sd">            If False, and if &#39;caller_rank&#39; is not None (meaning caller process will participate),</span>
-<span class="sd">            &#39;ranch()&#39; will whatever caller process&#39;s execution of &#39;fn(...)&#39; returns.</span>
+<span class="sd">        \*args: the positional arguments by values to `fn(\*args....)`</span>
+<span class="sd">        \*\*kwargs: the named parameters to `fn(x=..., y=....)`</span>
+<span class="sd">        caller_rank: Rank of the parent process.  ``0 &lt;= caller_rank &lt; nprocs`` to join, ``None`` to opt out. Default to ``0``.</span>
+
+<span class="sd">            In distributed data parallel, 0 means the leading process.</span>
+<span class="sd">        gather: if ``True``, `ranch` will return a list of return values from each worker, indexed by their ranks.</span>
+<span class="sd">            If ``False``, and if &#39;caller_rank&#39; is not None (meaning parent process is a worker),</span>
+<span class="sd">            `ranch()` will return whatever the parent process&#39; `fn(...)` returns.</span>
 <span class="sd">        ctx: a user defined context manager class object, used in a &#39;with&#39;-clause around &#39;fn(...)&#39; call in each process.</span>
 <span class="sd">            It must be derived from AbstractContextManager, and defines &#39;__enter__()&#39; and &#39;__exit__()&#39; methods.</span>
 <span class="sd">    </span>
 <span class="sd">    Returns:</span>
-<span class="sd">        ``None``, or ``[base_rank result, base_rank+1 result, .... base_rank+nprocs-1 result]``</span>
+<span class="sd">        ``None``, or list of results from ``[base_rank, base_rank+1, .... base_rank+nprocs-1]``</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">assert</span> <span class="n">nprocs</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;nprocs: # of processes to launch must be &gt; 0&quot;</span><span class="p">)</span>
@@ -288,19 +294,16 @@
 <div class="viewcode-block" id="TorchDDPCtx"><a class="viewcode-back" href="../mpify.html#mpify.TorchDDPCtx">[docs]</a><span class="k">class</span> <span class="nc">TorchDDPCtx</span><span class="p">(</span><span class="n">AbstractContextManager</span><span class="p">):</span>
     <span class="sd">&quot;&quot;&quot;</span>
 <span class="sd">    A context manager to set up and tear down a PyTorch distributed data parallel process group.</span>
-<span class="sd">    os.environ[] must define &#39;LOCAL_RANK&#39; prior to __enter__() </span>
+<span class="sd">    `os.environ[&#39;LOCAL_RANK&#39;]` must be defined prior to `__enter__()`.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        world_size: total number of members in the DDP group</span>
+<span class="sd">        base_rank: the starting, lowest rank value of among the forked local processes</span>
+<span class="sd">        use_gpu: if True, will set the default CUDA device base on `os.environ[&#39;LOCAL_RANK&#39;]`</span>
+<span class="sd">        addr, port, num_threads: see PyTorch distributed data parallel documentation.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">world_size</span><span class="p">:</span><span class="nb">int</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">base_rank</span><span class="p">:</span><span class="nb">int</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">use_gpu</span><span class="p">:</span><span class="nb">bool</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
                  <span class="n">addr</span><span class="p">:</span><span class="nb">str</span><span class="o">=</span><span class="s2">&quot;127.0.0.1&quot;</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span><span class="nb">int</span><span class="o">=</span><span class="mi">29500</span><span class="p">,</span> <span class="n">num_threads</span><span class="p">:</span><span class="nb">int</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        TorchDDPCtx.</span>
-
-<span class="sd">        Args:</span>
-<span class="sd">            world_size: total number of members in the DDP group</span>
-<span class="sd">            base_rank: the starting, lowest rank value of among the forked local processes</span>
-<span class="sd">            use_gpu: if True, will set the default CUDA device base on os.environ[&#39;LOCAL_RANK&#39;]</span>
-<span class="sd">            addr, port, num_threads: see PyTorch distributed data parallel documentation.</span>
-<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">assert</span> <span class="n">world_size</span> <span class="ow">and</span> <span class="p">(</span><span class="n">base_rank</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">world_size</span> <span class="o">&gt;</span> <span class="n">base_rank</span><span class="p">),</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Invalid world_size </span><span class="si">{</span><span class="n">world_size</span><span class="si">}</span><span class="s2"> or base_rank </span><span class="si">{</span><span class="n">base_rank</span><span class="si">}</span><span class="s2">. Need to be: world_size &gt; base_rank &gt;=0 &quot;</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">_ws</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_base_rank</span> <span class="o">=</span> <span class="n">world_size</span><span class="p">,</span> <span class="n">base_rank</span>
@@ -343,7 +346,8 @@
 
 <div class="viewcode-block" id="in_torchddp"><a class="viewcode-back" href="../mpify.html#mpify.in_torchddp">[docs]</a><span class="k">def</span> <span class="nf">in_torchddp</span><span class="p">(</span><span class="n">nprocs</span><span class="p">:</span><span class="nb">int</span><span class="p">,</span> <span class="n">fn</span><span class="p">:</span><span class="n">Callable</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="n">world_size</span><span class="p">:</span><span class="nb">int</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">base_rank</span><span class="p">:</span><span class="nb">int</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
                 <span class="n">ctx</span><span class="p">:</span><span class="n">TorchDDPCtx</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">need</span><span class="p">:</span><span class="nb">str</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">imports</span><span class="p">:</span><span class="nb">str</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-    <span class="sd">&quot;&quot;&quot;Launch `fn(*args, **kwargs)` in a new PyTorch distributed data parallel process group.</span>
+    <span class="sd">&quot;&quot;&quot;A convenience routine to prepare a context manager for PyTorch Distributed Data Parallel group setup/teardown,</span>
+<span class="sd">    then calls `ranch()` to fork and execute `fn(*args, **kwargs)`</span>
 
 <span class="sd">    Args:</span>
 <span class="sd">        nprocs: Number of local processes to fork</span>
@@ -354,6 +358,9 @@
 <span class="sd">            but user can override it with their own if necessary.</span>
 <span class="sd">        need: names of local objects to serialize over, comma-separated</span>
 <span class="sd">        imports: multi-line import statements, to apply in each forked process.</span>
+<span class="sd">    </span>
+<span class="sd">    Returns:</span>
+<span class="sd">        The result of `fn(*args, **kwargs)` in the rank `base_rank` execution.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">world_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span> <span class="n">world_size</span> <span class="o">=</span> <span class="n">nprocs</span>
     <span class="k">assert</span> <span class="n">base_rank</span> <span class="o">+</span> <span class="n">nprocs</span> <span class="o">&lt;=</span> <span class="n">world_size</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;nprocs(</span><span class="si">{</span><span class="n">nprocs</span><span class="si">}</span><span class="s2">) + base_rank(</span><span class="si">{</span><span class="n">base_rank</span><span class="si">}</span><span class="s2">) must be &lt; world_size(</span><span class="si">{</span><span class="n">world_size</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>

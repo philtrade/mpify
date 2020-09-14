@@ -24,6 +24,7 @@ def global_imports(imports:[str], ns:dict=None):
 
     Args:
         imports: list of import statements, as in Python code.  Supported formats include:
+
             * import x, y, z as z_alias
 
             * from A import x
@@ -79,36 +80,42 @@ def _contextualize(i:int, nprocs:int, fn:Callable, cm:AbstractContextManager, l=
     return _cfn
 
 def ranch(nprocs:int, fn:Callable, *args, caller_rank:int=0, gather:bool=True, ctx:AbstractContextManager=None, need:str="", imports="", **kwargs):
-    """ Execute `fn(\*args, \*\*kwargs)` distributedly in `nprocs` processes.
+    """ Execute `fn(\*args, \*\*kwargs)` distributedly in `nprocs` processes.  User can
+    serialize over objects and functions, spell out import statements, manage execution
+    context, gather results, and the parent process can participate as one of the workers.
 
-    Inside each forked process, import statements are executed first, then objects/functions
-    listed in `need` from the caller\\'s namespace are made visible to the forked process\\'s
-    python global namespace (they are serialized by 'ranch()').
-    Then, any user defined context manager is applied around the call 'fn(\*args, \*\*kwargs)'.
-    Return value of each call can be gathered in a list, indexed by the process's rank,
+    If `caller_rank` is `0 <= caller_rank < nprocs`, only `nprocs - 1` processes will be forked, and the caller process will be a worker to run its share of `fn(..)`.
+
+    If `caller_rank` is ``None``, `nprocs` processes will be forked.
+
+    Inside each worker process, its relative rank among all workers is set up in `os.environ['LOCAL_RANK']`, and the total
+    number of workers is set up in `os.environ['LOCAL_WORLD_SIZE']`, both as strings.
+
+    Then import statements in `imports`, followed by any objects/functions in `need`, are brought
+    into the python global namespace.
+
+    Then, context manager `ctx` is applied around the call `fn(\*args, \*\*kwargs)`.
+
+    Return value of each worker can be gathered in a list (indexed by the process's rank)
     and returned to the caller of `ranch()`.
 
-    Caller of `ranch()` can participate as one of the workers, if `caller_rank` is not None
-    and `0 <= caller_rank < nprocs`.
-
     Args:
-        nprocs: Number of processes to fork.  Visible as a string in "os.environ['LOCAL_WORLD_SIZE']"
+        nprocs: Number of processes to fork.  Visible as a string in `os.environ['LOCAL_WORLD_SIZE']`
             in all worker processes.
         fn: the function to execute on the worker pool
-        \*args: the positional arguments by values to 'fn(\*args....)'
-        \*\*kwargs: the named parameters to 'fn(x=..., y=....)'
-        caller_rank: use 'None' if caller does NOT want to participate in 'fn(...)'
-            Otherwise, it'll represent the rank of a worker process among all workers.
-            The value is 0 <= caller_rank < nprocs, and will be visible as a string in
-            "os.environ['LOCAL_RANK']"
-        gather: if True, `ranch` will return a list of return values from each worker.
-            If False, and if 'caller_rank' is not None (meaning caller process will participate),
-            'ranch()' will whatever caller process's execution of 'fn(...)' returns.
+        \*args: the positional arguments by values to `fn(\*args....)`
+        \*\*kwargs: the named parameters to `fn(x=..., y=....)`
+        caller_rank: Rank of the parent process.  ``0 <= caller_rank < nprocs`` to join, ``None`` to opt out. Default to ``0``.
+
+            In distributed data parallel, 0 means the leading process.
+        gather: if ``True``, `ranch` will return a list of return values from each worker, indexed by their ranks.
+            If ``False``, and if 'caller_rank' is not None (meaning parent process is a worker),
+            `ranch()` will return whatever the parent process' `fn(...)` returns.
         ctx: a user defined context manager class object, used in a 'with'-clause around 'fn(...)' call in each process.
             It must be derived from AbstractContextManager, and defines '__enter__()' and '__exit__()' methods.
     
     Returns:
-        ``None``, or ``[base_rank result, base_rank+1 result, .... base_rank+nprocs-1 result]``
+        ``None``, or list of results from ``[base_rank, base_rank+1, .... base_rank+nprocs-1]``
     """
 
     assert nprocs > 0, ValueError("nprocs: # of processes to launch must be > 0")
@@ -136,19 +143,16 @@ def ranch(nprocs:int, fn:Callable, *args, caller_rank:int=0, gather:bool=True, c
 class TorchDDPCtx(AbstractContextManager):
     """
     A context manager to set up and tear down a PyTorch distributed data parallel process group.
-    os.environ[] must define 'LOCAL_RANK' prior to __enter__() 
+    `os.environ['LOCAL_RANK']` must be defined prior to `__enter__()`.
+
+    Args:
+        world_size: total number of members in the DDP group
+        base_rank: the starting, lowest rank value of among the forked local processes
+        use_gpu: if True, will set the default CUDA device base on `os.environ['LOCAL_RANK']`
+        addr, port, num_threads: see PyTorch distributed data parallel documentation.
     """
     def __init__(self, *args, world_size:int=None, base_rank:int=0, use_gpu:bool=True,
                  addr:str="127.0.0.1", port:int=29500, num_threads:int=1, **kwargs):
-        """
-        TorchDDPCtx.
-
-        Args:
-            world_size: total number of members in the DDP group
-            base_rank: the starting, lowest rank value of among the forked local processes
-            use_gpu: if True, will set the default CUDA device base on os.environ['LOCAL_RANK']
-            addr, port, num_threads: see PyTorch distributed data parallel documentation.
-        """
         assert world_size and (base_rank >= 0 and world_size > base_rank), ValueError(f"Invalid world_size {world_size} or base_rank {base_rank}. Need to be: world_size > base_rank >=0 ")
 
         self._ws, self._base_rank = world_size, base_rank
@@ -191,7 +195,8 @@ class TorchDDPCtx(AbstractContextManager):
 
 def in_torchddp(nprocs:int, fn:Callable, *args, world_size:int=None, base_rank:int=0,
                 ctx:TorchDDPCtx=None, need:str="", imports:str="", **kwargs):
-    """Launch `fn(*args, **kwargs)` in a new PyTorch distributed data parallel process group.
+    """A convenience routine to prepare a context manager for PyTorch Distributed Data Parallel group setup/teardown,
+    then calls `ranch()` to fork and execute `fn(*args, **kwargs)`
 
     Args:
         nprocs: Number of local processes to fork
@@ -202,6 +207,9 @@ def in_torchddp(nprocs:int, fn:Callable, *args, world_size:int=None, base_rank:i
             but user can override it with their own if necessary.
         need: names of local objects to serialize over, comma-separated
         imports: multi-line import statements, to apply in each forked process.
+    
+    Returns:
+        The result of `fn(*args, **kwargs)` in the rank `base_rank` execution.
     """
     if world_size is None: world_size = nprocs
     assert base_rank + nprocs <= world_size, ValueError(f"nprocs({nprocs}) + base_rank({base_rank}) must be < world_size({world_size})")
