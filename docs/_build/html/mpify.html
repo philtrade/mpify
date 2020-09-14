@@ -178,21 +178,32 @@ and returned to the caller of <cite>ranch()</cite>.</p>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>nprocs</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>) – Number of processes to fork.  Visible as a string in <cite>os.environ[‘LOCAL_WORLD_SIZE’]</cite>
 in all worker processes.</p></li>
-<li><p><strong>fn</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.8)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Callable</span></code></a>) – the function to execute on the worker pool</p></li>
-<li><p><strong>*args</strong> – the positional arguments by values to <cite>fn(*args….)</cite></p></li>
-<li><p><strong>**kwargs</strong> – the named parameters to <cite>fn(x=…, y=….)</cite></p></li>
+<li><p><strong>fn</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Callable" title="(in Python v3.8)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Callable</span></code></a>) – Function to execute on the worker pool</p></li>
+<li><p><strong>*args</strong> – Positional arguments by values to <cite>fn(*args….)</cite></p></li>
+<li><p><strong>**kwargs</strong> – Named parameters to <cite>fn(x=…, y=….)</cite></p></li>
 <li><p><strong>caller_rank</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">int</span></code></a>) – <p>Rank of the parent process.  <code class="docutils literal notranslate"><span class="pre">0</span> <span class="pre">&lt;=</span> <span class="pre">caller_rank</span> <span class="pre">&lt;</span> <span class="pre">nprocs</span></code> to join, <code class="docutils literal notranslate"><span class="pre">None</span></code> to opt out. Default to <code class="docutils literal notranslate"><span class="pre">0</span></code>.</p>
 <p>In distributed data parallel, 0 means the leading process.</p>
 </p></li>
 <li><p><strong>gather</strong> (<a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">bool</span></code></a>) – if <code class="docutils literal notranslate"><span class="pre">True</span></code>, <cite>ranch</cite> will return a list of return values from each worker, indexed by their ranks.
 If <code class="docutils literal notranslate"><span class="pre">False</span></code>, and if ‘caller_rank’ is not None (meaning parent process is a worker),
 <cite>ranch()</cite> will return whatever the parent process’ <cite>fn(…)</cite> returns.</p></li>
-<li><p><strong>ctx</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.8)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/contextlib.html#contextlib.AbstractContextManager" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">AbstractContextManager</span></code></a>]) – a user defined context manager class object, used in a ‘with’-clause around ‘fn(…)’ call in each process.
-It must be derived from AbstractContextManager, and defines ‘__enter__()’ and ‘__exit__()’ methods.</p></li>
+<li><p><strong>ctx</strong> (<a class="reference external" href="https://docs.python.org/3/library/typing.html#typing.Optional" title="(in Python v3.8)"><code class="xref py py-data docutils literal notranslate"><span class="pre">Optional</span></code></a>[<a class="reference external" href="https://docs.python.org/3/library/contextlib.html#contextlib.AbstractContextManager" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">AbstractContextManager</span></code></a>]) – User defined context manager to be used in a ‘with’-clause around the ‘fn(…)’ call in worker processes.
+Subclassed from AbstractContextManager, ctx needs to define ‘__enter__()’ and ‘__exit__()’ methods.</p></li>
+<li><p><strong>need</strong> (<a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.8)"><code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code></a>) – Space-separated names of objects/functions to be serialized over to the subprocesses.</p></li>
+<li><p><strong>imports</strong> – <p>A multiline string of <cite>import</cite> statements to execute in the subprocesses
+before <cite>fn()</cite> execution.  Supported formats:</p>
+<ul>
+<li><p><cite>import x, y, z as zoo</cite></p></li>
+<li><p><cite>from A import x</cite></p></li>
+<li><p><cite>from A import z as zoo</cite></p></li>
+<li><p><cite>from A import x, y, z as zoo</cite></p></li>
+<li><p>Not supported: <cite>from A import (x, y)</cite></p></li>
+</ul>
+</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns</dt>
-<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">None</span></code>, or list of results from <code class="docutils literal notranslate"><span class="pre">[base_rank,</span> <span class="pre">base_rank+1,</span> <span class="pre">....</span> <span class="pre">base_rank+nprocs-1]</span></code></p>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">None</span></code>, or list of results from worker processes, indexed by their <cite>LOCAL_RANK</cite>: <code class="docutils literal notranslate"><span class="pre">[res_0,</span> <span class="pre">res_1,</span> <span class="pre">....</span> <span class="pre">res_{nprocs-1}]</span></code></p>
 </dd>
 </dl>
 </dd></dl>

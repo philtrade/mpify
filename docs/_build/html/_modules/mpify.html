@@ -253,20 +253,33 @@
 <span class="sd">    Args:</span>
 <span class="sd">        nprocs: Number of processes to fork.  Visible as a string in `os.environ[&#39;LOCAL_WORLD_SIZE&#39;]`</span>
 <span class="sd">            in all worker processes.</span>
-<span class="sd">        fn: the function to execute on the worker pool</span>
-<span class="sd">        \*args: the positional arguments by values to `fn(\*args....)`</span>
-<span class="sd">        \*\*kwargs: the named parameters to `fn(x=..., y=....)`</span>
+<span class="sd">        fn: Function to execute on the worker pool</span>
+<span class="sd">        \*args: Positional arguments by values to `fn(\*args....)`</span>
+<span class="sd">        \*\*kwargs: Named parameters to `fn(x=..., y=....)`</span>
 <span class="sd">        caller_rank: Rank of the parent process.  ``0 &lt;= caller_rank &lt; nprocs`` to join, ``None`` to opt out. Default to ``0``.</span>
 
 <span class="sd">            In distributed data parallel, 0 means the leading process.</span>
 <span class="sd">        gather: if ``True``, `ranch` will return a list of return values from each worker, indexed by their ranks.</span>
 <span class="sd">            If ``False``, and if &#39;caller_rank&#39; is not None (meaning parent process is a worker),</span>
 <span class="sd">            `ranch()` will return whatever the parent process&#39; `fn(...)` returns.</span>
-<span class="sd">        ctx: a user defined context manager class object, used in a &#39;with&#39;-clause around &#39;fn(...)&#39; call in each process.</span>
-<span class="sd">            It must be derived from AbstractContextManager, and defines &#39;__enter__()&#39; and &#39;__exit__()&#39; methods.</span>
-<span class="sd">    </span>
+<span class="sd">        ctx: User defined context manager to be used in a &#39;with&#39;-clause around the &#39;fn(...)&#39; call in worker processes.</span>
+<span class="sd">            Subclassed from AbstractContextManager, ctx needs to define &#39;__enter__()&#39; and &#39;__exit__()&#39; methods.</span>
+<span class="sd">        need: Space-separated names of objects/functions to be serialized over to the subprocesses.</span>
+<span class="sd">        imports: A multiline string of `import` statements to execute in the subprocesses</span>
+<span class="sd">            before `fn()` execution.  Supported formats:</span>
+
+<span class="sd">            * `import x, y, z as zoo`</span>
+
+<span class="sd">            * `from A import x`</span>
+
+<span class="sd">            * `from A import z as zoo`</span>
+
+<span class="sd">            * `from A import x, y, z as zoo`</span>
+
+<span class="sd">            * Not supported: `from A import (x, y)`</span>
+
 <span class="sd">    Returns:</span>
-<span class="sd">        ``None``, or list of results from ``[base_rank, base_rank+1, .... base_rank+nprocs-1]``</span>
+<span class="sd">        ``None``, or list of results from worker processes, indexed by their `LOCAL_RANK`: ``[res_0, res_1, .... res_{nprocs-1}]``</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">assert</span> <span class="n">nprocs</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;nprocs: # of processes to launch must be &gt; 0&quot;</span><span class="p">)</span>

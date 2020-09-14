@@ -102,20 +102,33 @@ def ranch(nprocs:int, fn:Callable, *args, caller_rank:int=0, gather:bool=True, c
     Args:
         nprocs: Number of processes to fork.  Visible as a string in `os.environ['LOCAL_WORLD_SIZE']`
             in all worker processes.
-        fn: the function to execute on the worker pool
-        \*args: the positional arguments by values to `fn(\*args....)`
-        \*\*kwargs: the named parameters to `fn(x=..., y=....)`
+        fn: Function to execute on the worker pool
+        \*args: Positional arguments by values to `fn(\*args....)`
+        \*\*kwargs: Named parameters to `fn(x=..., y=....)`
         caller_rank: Rank of the parent process.  ``0 <= caller_rank < nprocs`` to join, ``None`` to opt out. Default to ``0``.
 
             In distributed data parallel, 0 means the leading process.
         gather: if ``True``, `ranch` will return a list of return values from each worker, indexed by their ranks.
             If ``False``, and if 'caller_rank' is not None (meaning parent process is a worker),
             `ranch()` will return whatever the parent process' `fn(...)` returns.
-        ctx: a user defined context manager class object, used in a 'with'-clause around 'fn(...)' call in each process.
-            It must be derived from AbstractContextManager, and defines '__enter__()' and '__exit__()' methods.
-    
+        ctx: User defined context manager to be used in a 'with'-clause around the 'fn(...)' call in worker processes.
+            Subclassed from AbstractContextManager, ctx needs to define '__enter__()' and '__exit__()' methods.
+        need: Space-separated names of objects/functions to be serialized over to the subprocesses.
+        imports: A multiline string of `import` statements to execute in the subprocesses
+            before `fn()` execution.  Supported formats:
+
+            * `import x, y, z as zoo`
+
+            * `from A import x`
+
+            * `from A import z as zoo`
+
+            * `from A import x, y, z as zoo`
+
+            * Not supported: `from A import (x, y)`
+
     Returns:
-        ``None``, or list of results from ``[base_rank, base_rank+1, .... base_rank+nprocs-1]``
+        ``None``, or list of results from worker processes, indexed by their `LOCAL_RANK`: ``[res_0, res_1, .... res_{nprocs-1}]``
     """
 
     assert nprocs > 0, ValueError("nprocs: # of processes to launch must be > 0")
