@@ -24,11 +24,15 @@ Examples
 
 Original:
 
-<img src="/images/01_intro_train_cnn_orig.png" height="350">
+|NBexOriginal|
+
+.. |NBexOriginal| image:: https://github.com/philtrade/mpify/images/01_intro_train_cnn_orig.png
 
 `mpify`-ed:
 
-<img src="/images/01_intro_train_cnn_mpify.png" height="450">
+|NBexMpified|
+
+.. |NBexMpified| image:: https://github.com/philtrade/mpify/images/01_intro_train_cnn_mpify.png
 
 More notebook examples can be found in the [examples/](/examples) directory.
 
@@ -37,7 +41,7 @@ Installation
 ------------
 
 ::
-    python3 -m pip install git+https://github.com/philtrade/mpify 
+      python3 -m pip install git+https://github.com/philtrade/mpify 
 
 Documentation
 -------------
