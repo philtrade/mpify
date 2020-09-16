@@ -2,20 +2,24 @@ Introduction
 ============
 
 **`mpify`** is a thin library to run function on multiple processes, and to help training model
-in PyTorch's Distributed Data Parallel mode in a spontaneous manner.
+in PyTorch's Distributed Data Parallel mode in a spontaneous manner.  It was conceived to overcome
+the many quirks of *coordinating Python multiprocessing, Jupyter, and multiple CUDA GPUs*.
+It is a follow-up to my previous iPython extension: `Ddip <https://github.com/philtrade/Ddip>`_, which uses `ipyparallel`.
+
 
 The main features are:
 
-  * Parallel but blocking execution, call returns when the function has finished in all processes.
-  * Worker pool is non-persistent.  Subprocesses are forked spontaneously and terminates upon function exit.
-  * Each worker can initialize its own GPU context, suitable distributed application on a multi-GPU node.
-  * Functions/objects, *including those defined in a Jupyter notebook*, can be serialized to subprocesses by name.
-  * Import statements can be executed in the spontaneously created worker processes, before the function body is run.
-  * Results from any or all of the workers can be gathered.
+* Parallel but blocking execution, call returns when the function has finished in all processes.
+* Worker pool is non-persistent.  Subprocesses are forked spontaneously and terminates upon function exit.
+* Each worker can initialize its own GPU context, suitable for distributed application on a multi-GPU node.
+* Functions/objects, *including those defined in a Jupyter notebook*, can be serialized to subprocesses by name.
+* User can specify `import` statements to executed before the function body is run.
+* Results from any or all of the workers can be gathered.
 
-Although `mpify` works standalone Python app too, it is designed with single-node,
-multi-GPUs usage in mind.  For asynchronous, distributed workloads on multiple nodes (cluster),
-please use `ipyparallel`, `dask`, or `ray`, as they take care of scheduling, fault tolerance etc..
+Although `mpify` works as standalone Python app, it is designed to faciliate multiprocessing in a Jupyter
+session running on a single-node with multi-GPUs.  For asynchronous, distributed workloads on a cluster,
+please use `ipyparallel`, `dask`, or `ray`, as they have many more adminstrative features like scheduling,
+fault tolerance, and persistent pool etc..
 
 Examples
 --------
@@ -50,8 +54,6 @@ The complete `API documentation <https://mpify.readthedocs.io/en/latest/mpify.ht
 
 References
 ----------
-
-**Mpify** was conceived to overcome the many quirks of *getting Python multiprocess x Jupyter x multiple CUDA GPUs on {Windows or Unix}* to cooperate.  It is  a thinner lighter follow-up to my previous attempt at the problem: [`Ddip`](https://github.com/philtrade/Ddip), which uses `ipyparallel`.
 
 * Why use `multiprocess <https://github.com/uqfoundation/multiprocess>`_ instead of `multiprocessing` and `torch.multiprocessing`: <https://hpc-carpentry.github.io/hpc-python/06-parallel/>
 * On `from module import *` within a function: https://stackoverflow.com/questions/41990900/what-is-the-function-form-of-star-import-in-python-3

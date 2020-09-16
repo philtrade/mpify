@@ -8,6 +8,5 @@ mpify Documentation
 
 .. toctree::
    :maxdepth: 2
-   :caption: API:
 
-   mpify
+   readme
