@@ -30,14 +30,14 @@ Original:
 
 |NBexOriginal|
 
-.. |NBexOriginal| image:: _static/01_intro_train_cnn_orig.png
+.. |NBexOriginal| image:: https://raw.githubusercontent.com/philtrade/mpify/master/docs/_static/01_intro_train_cnn_orig.png?sanitize=true
    :alt:
 
 `mpify`-ed:
 
 |NBexMpified|
 
-.. |NBexMpified| image:: _static/01_intro_train_cnn_mpify.png
+.. |NBexMpified| image:: https://raw.githubusercontent.com/philtrade/mpify/master/docs/_static/01_intro_train_cnn_mpify.png?sanitize=true
    :alt:
 
 More notebook examples can be found in the [examples/](/examples) directory.
