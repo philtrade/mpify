@@ -207,7 +207,7 @@ class TorchDDPCtx(AbstractContextManager):
         return exc_type is None
 
 def in_torchddp(nprocs:int, fn:Callable, *args, world_size:int=None, base_rank:int=0,
-                ctx:TorchDDPCtx=None, need:str="", imports:str="", **kwargs):
+                ctx:TorchDDPCtx=None, use_gpu:bool=True, need:str="", imports:str="", **kwargs):
     """A convenience routine to prepare a context manager for PyTorch Distributed Data Parallel group setup/teardown,
     then calls `ranch()` to fork and execute `fn(*args, **kwargs)`
 
@@ -218,6 +218,7 @@ def in_torchddp(nprocs:int, fn:Callable, *args, world_size:int=None, base_rank:i
         base_rank: the lowest, starting rank of in the local processes
         ctx: by default will use `mpify.TorchDDPCtx` to set up torch distributed group,
             but user can override it with their own if necessary.
+        use_gpu: a hint to suggest using GPU if available.
         need: names of local objects to serialize over, comma-separated
         imports: multi-line import statements, to apply in each forked process.
     
@@ -226,5 +227,5 @@ def in_torchddp(nprocs:int, fn:Callable, *args, world_size:int=None, base_rank:i
     """
     if world_size is None: world_size = nprocs
     assert base_rank + nprocs <= world_size, ValueError(f"nprocs({nprocs}) + base_rank({base_rank}) must be < world_size({world_size})")
-    if ctx is None: ctx = TorchDDPCtx(world_size=world_size, base_rank=base_rank)
+    if ctx is None: ctx = TorchDDPCtx(world_size=world_size, base_rank=base_rank, use_gpu=use_gpu)
     return ranch(nprocs, fn, *args, caller_rank=0, gather=False, ctx=ctx, need=need, imports=imports, **kwargs)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from mpify import in_torchddp, ddp_rank, ddp_worldsize
+from mpify import in_torchddp
 import os
 import torch
 import torch.distributed as dist
@@ -59,4 +59,5 @@ def rank_size_wrapper(fn):
 if __name__ == "__main__":
     size = torch.cuda.device_count() if torch.cuda.is_available() else 5
     "Pick one of run_blocking, run_nonblocking, and run_allreduce"
-    in_torchddp(size, rank_size_wrapper(run_nonblocking))
+    fn = rank_size_wrapper(run_blocking)
+    in_torchddp(size, fn, use_gpu=False)
