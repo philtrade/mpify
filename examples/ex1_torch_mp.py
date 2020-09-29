@@ -46,9 +46,9 @@ def run_nonblocking(rank, size):
 """ All-Reduce example."""
 def run_allreduce(rank, size):
     """ Simple point-to-point communication. """
-    tensor = torch.ones(1)
+    tensor = torch.tensor(rank)
     dist.all_reduce(tensor, op=dist.ReduceOp.SUM)
-    print('AllReduce: Rank ', rank, ' has data ', tensor[0], flush=True)
+    print('AllReduce: Rank ', rank, ' has data ', tensor.item(), flush=True)
 
 def rank_size_wrapper(fn):
     def new_fn(*args, **kwargs):
@@ -59,5 +59,5 @@ def rank_size_wrapper(fn):
 if __name__ == "__main__":
     size = torch.cuda.device_count() if torch.cuda.is_available() else 5
     "Pick one of run_blocking, run_nonblocking, and run_allreduce"
-    fn = rank_size_wrapper(run_blocking)
+    fn = rank_size_wrapper(run_allreduce)
     in_torchddp(size, fn, use_gpu=False)
