@@ -55,9 +55,7 @@ The complete `API documentation <https://mpify.readthedocs.io/en/latest/mpify.ht
 
 References
 ----------
- was conceived to overcome
-the many quirks of *coordinating Python multiprocessing, Jupyter, and multiple CUDA GPUs*.
-It is a follow-up to my previous iPython extension: `Ddip <https://github.com/philtrade/Ddip>`_, which uses `ipyparallel`.
+**mpify** was conceived to *coordinate Python multiprocessing, Jupyter, and multiple CUDA GPUs on a single host*.
 
 * Why use `multiprocess <https://github.com/uqfoundation/multiprocess>`_ instead of `multiprocessing` and `torch.multiprocessing`: <https://hpc-carpentry.github.io/hpc-python/06-parallel/>
 * On `from module import *` within a function: https://stackoverflow.com/questions/41990900/what-is-the-function-form-of-star-import-in-python-3
